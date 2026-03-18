@@ -680,6 +680,69 @@
     font-family: 'Noto Sans TC', sans-serif; outline: none; cursor: pointer;
   }
 
+  /* ── Talent page ── */
+  .talent-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  }
+  .talent-col {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column;
+  }
+  .talent-col-header {
+    padding: 14px 18px; display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .talent-col-title { font-size: 14px; font-weight: 700; flex: 1; }
+  .talent-list { flex: 1; overflow-y: auto; max-height: 520px; padding: 8px; }
+  .talent-list::-webkit-scrollbar { width: 4px; }
+  .talent-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .talent-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    transition: border .15s, box-shadow .15s; cursor: pointer;
+  }
+  .talent-card:hover { border-color: var(--accent3); box-shadow: 0 2px 10px rgba(0,0,0,.2); }
+  .talent-card-top { display: flex; align-items: flex-start; gap: 10px; }
+  .talent-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    background: var(--surface3); display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 700; color: var(--accent3);
+  }
+  .talent-name { font-size: 14px; font-weight: 600; flex: 1; }
+  .talent-title { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .talent-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .talent-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    background: var(--surface3); color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+  }
+  .talent-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+  .talent-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+  .talent-card:hover .talent-actions { opacity: 1; }
+  .talent-action-btn {
+    background: none; border: 1px solid transparent; color: var(--text-muted);
+    border-radius: 5px; width: 24px; height: 24px; cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .talent-action-btn:hover { border-color: var(--border); color: var(--accent3); background: var(--surface3); }
+  .talent-action-btn.del:hover { color: var(--danger); }
+  .talent-add-row {
+    display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .talent-add-row input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 7px 10px;
+    font-size: 12px; font-family: 'Noto Sans TC', sans-serif; outline: none;
+  }
+  .talent-add-row input:focus { border-color: var(--accent3); }
+  .talent-status-badge {
+    font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 8px;
+    font-family: 'Space Mono', monospace; white-space: nowrap; flex-shrink: 0;
+  }
+  .talent-status-active  { background: rgba(52,211,153,.15); color: var(--success); }
+  .talent-status-passive { background: rgba(78,205,196,.15);  color: var(--accent3); }
+
   /* ── Animations ── */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .page.active { animation: fadeIn .25s ease; }
@@ -746,6 +809,9 @@
     </div>
     <div class="nav-item" onclick="showPage('stats')">
       <span class="icon">📈</span> 本週數據
+    </div>
+    <div class="nav-item" onclick="showPage('talent')">
+      <span class="icon">👤</span> 人選庫
     </div>
     <div class="nav-divider"></div>
     <div class="nav-item" onclick="toggleTheme()" id="theme-nav-item" title="切換深色/淺色">
@@ -826,6 +892,47 @@
     </div>
     <div id="todo-view-list" style="display:none;">
       <div class="todo-flat-list" id="todo-flat-list"></div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: Talent ══ -->
+  <div class="page" id="page-talent">
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h1>👤 人選庫</h1>
+          <p>管理你的人才資料庫</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddTalent()">＋ 新增人選</button>
+      </div>
+    </div>
+    <div class="talent-grid">
+      <!-- 積極找 -->
+      <div class="talent-col">
+        <div class="talent-col-header" style="border-top:3px solid var(--success)">
+          <span class="talent-col-title">🔥 積極找</span>
+          <span class="badge badge-green" id="badge-active-talent">0</span>
+        </div>
+        <div class="talent-list" id="talent-list-active"></div>
+        <div class="talent-add-row">
+          <input type="text" id="quick-talent-active" placeholder="快速新增人選...（Enter 新增）"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();quickAddTalentSafe('active');return false;}" />
+          <button class="btn btn-sm btn-outline" onclick="quickAddTalentSafe('active')">＋</button>
+        </div>
+      </div>
+      <!-- 待業中 -->
+      <div class="talent-col">
+        <div class="talent-col-header" style="border-top:3px solid var(--accent3)">
+          <span class="talent-col-title">💼 待業中</span>
+          <span class="badge badge-teal" id="badge-passive-talent">0</span>
+        </div>
+        <div class="talent-list" id="talent-list-passive"></div>
+        <div class="talent-add-row">
+          <input type="text" id="quick-talent-passive" placeholder="快速新增人選...（Enter 新增）"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();quickAddTalentSafe('passive');return false;}" />
+          <button class="btn btn-sm btn-outline" onclick="quickAddTalentSafe('passive')">＋</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1123,6 +1230,51 @@
   </div>
 </div>
 
+<!-- ══ Add/Edit Talent Modal ══ -->
+<div class="modal-overlay" id="modal-talent">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <div class="modal-title" id="talent-modal-title">新增人選</div>
+      <button class="modal-close" onclick="closeModal('modal-talent')">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">姓名</label>
+        <input type="text" class="form-input" id="talent-name" placeholder="例：王大明" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">職稱 / 專長</label>
+        <input type="text" class="form-input" id="talent-title" placeholder="例：Senior PM" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">狀態</label>
+        <select class="form-select" id="talent-status">
+          <option value="active">🔥 積極找</option>
+          <option value="passive">💼 待業中</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">聯絡方式</label>
+        <input type="text" class="form-input" id="talent-contact" placeholder="電話 / Email / Line" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">標籤（逗號分隔）</label>
+      <input type="text" class="form-input" id="talent-tags" placeholder="例：PM, SaaS, 英文流利" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">備註</label>
+      <textarea class="form-textarea" id="talent-note" placeholder="薪資期望、可面試時間、特殊條件..." style="min-height:70px"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-talent')">取消</button>
+      <button class="btn btn-primary" id="talent-submit-btn" onclick="saveTalent()">新增人選</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Confirm Delete Modal ══ -->
 <div class="modal-overlay" id="modal-confirm-delete">
   <div class="confirm-modal">
@@ -1169,6 +1321,8 @@ let state = JSON.parse(localStorage.getItem('hh_state') || 'null') || {
   nextTodoId: 1,
   nextJobId: 1,
   sectionOrder: ['tel','bc','ii','bm','ppc','ps','other'],
+  talents: [],
+  nextTalentId: 1,
 };
 
 function save() { localStorage.setItem('hh_state', JSON.stringify(state)); }
@@ -1292,12 +1446,12 @@ function showPage(p) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.getElementById('page-' + p).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(el => {
-    if (el.textContent.includes(p === 'today' ? '每日' : p === 'dashboard' ? '案子' : '本週')) {
-      el.classList.add('active');
-    }
+    const map = { today:'每日', dashboard:'案子', stats:'本週', talent:'人選' };
+    if (map[p] && el.textContent.includes(map[p])) el.classList.add('active');
   });
   if (p === 'dashboard') renderDashboard();
   if (p === 'stats') renderStats();
+  if (p === 'talent') renderTalent();
 }
 
 // ══════════════════════════════════════════════
@@ -1373,8 +1527,13 @@ function renderTodos() {
     const s = TODO_SECTIONS.find(x => x.key === key);
     if (!s) return '';
     const items = state.todos[s.key] || [];
-    const pending = items.filter(t => !t.done && (t.date === vdk || (!t.date && vdk === todayKey()))).length;
-    const visibleItems = items.filter(t => t.date === vdk || (!t.date && vdk === todayKey()));
+    // Show: tasks for viewed date + all PAST undone tasks (accumulate)
+    const visibleItems = items.filter(t => {
+      const d = t.date || todayKey();
+      if (t.done) return d === vdk; // done: only show on their own date
+      return d <= vdk;              // undone: show today + all overdue past
+    });
+    const pending = visibleItems.filter(t => !t.done).length;
     const itemsHTML = visibleItems.length === 0
       ? `<div class="empty-state" style="padding:18px 0 10px"><div class="empty-icon" style="font-size:22px">✅</div>沒有待辦</div>`
       : visibleItems.map(t => {
@@ -2223,6 +2382,139 @@ function applyTheme(mode, save) {
 }
 
 // ══════════════════════════════════════════════
+// Talent
+// ══════════════════════════════════════════════
+let _editTalentId = null;
+
+
+
+function openAddTalent(status) {
+  _editTalentId = null;
+  document.getElementById('talent-modal-title').textContent = '新增人選';
+  document.getElementById('talent-submit-btn').textContent = '新增人選';
+  document.getElementById('talent-name').value    = '';
+  document.getElementById('talent-title').value   = '';
+  document.getElementById('talent-contact').value = '';
+  document.getElementById('talent-tags').value    = '';
+  document.getElementById('talent-note').value    = '';
+  document.getElementById('talent-status').value  = status || 'active';
+  openModal('modal-talent');
+}
+
+function editTalent(id) {
+  const t = state.talents.find(x => x.id === id);
+  if (!t) return;
+  _editTalentId = id;
+  document.getElementById('talent-modal-title').textContent = '編輯人選';
+  document.getElementById('talent-submit-btn').textContent  = '儲存';
+  document.getElementById('talent-name').value    = t.name    || '';
+  document.getElementById('talent-title').value   = t.title   || '';
+  document.getElementById('talent-contact').value = t.contact || '';
+  document.getElementById('talent-tags').value    = (t.tags || []).join(', ');
+  document.getElementById('talent-note').value    = t.note    || '';
+  document.getElementById('talent-status').value  = t.status  || 'active';
+  openModal('modal-talent');
+}
+
+function saveTalent() {
+  const name = document.getElementById('talent-name').value.trim();
+  if (!name) return;
+  const data = {
+    name,
+    title:   document.getElementById('talent-title').value.trim(),
+    contact: document.getElementById('talent-contact').value.trim(),
+    tags:    document.getElementById('talent-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    note:    document.getElementById('talent-note').value.trim(),
+    status:  document.getElementById('talent-status').value,
+  };
+  if (_editTalentId !== null) {
+    const idx = state.talents.findIndex(t => t.id === _editTalentId);
+    if (idx >= 0) state.talents[idx] = { ...state.talents[idx], ...data };
+  } else {
+    state.talents.push({ id: state.nextTalentId++, ...data });
+  }
+  save(); renderTalent(); closeModal('modal-talent');
+}
+
+function deleteTalent(id) {
+  state.talents = state.talents.filter(t => t.id !== id);
+  save(); renderTalent();
+}
+
+function moveTalentStatus(id) {
+  const t = state.talents.find(x => x.id === id);
+  if (!t) return;
+  t.status = t.status === 'active' ? 'passive' : 'active';
+  save(); renderTalent();
+}
+
+let _talentAddLock = false;
+
+function quickAddTalentSafe(status) {
+  if (_talentAddLock) return;
+  _talentAddLock = true;
+  setTimeout(() => { _talentAddLock = false; }, 300);
+  const el = document.getElementById('quick-talent-' + status);
+  if (!el) return;
+  const name = el.value.trim();
+  if (!name) return;
+  el.value = '';
+  state.talents.push({ id: state.nextTalentId++, name, title:'', contact:'', tags:[], note:'', status });
+  save();
+  renderTalentList('active');
+  renderTalentList('passive');
+  updateTalentBadges();
+  el.focus();
+}
+
+function quickAddTalent(status) { quickAddTalentSafe(status); }
+
+function renderTalentList(status) {
+  const list = document.getElementById('talent-list-' + status);
+  if (!list) return;
+  const items = (state.talents || []).filter(t => t.status === status);
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding:24px 0"><div class="empty-icon" style="font-size:28px">' +
+      (status === 'active' ? '🔍' : '💼') + '</div>尚無人選</div>';
+    return;
+  }
+  list.innerHTML = items.map(t => {
+    const tagsHtml = (t.tags||[]).map(tag => '<span class="talent-tag">' + tag + '</span>').join('');
+    return '<div class="talent-card">' +
+      '<div class="talent-card-top">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="talent-name">' + escHtml(t.name) + '</div>' +
+          (t.title ? '<div class="talent-title">' + escHtml(t.title) + '</div>' : '') +
+          (t.contact ? '<div class="talent-title" style="color:var(--accent3)">📞 ' + escHtml(t.contact) + '</div>' : '') +
+        '</div>' +
+        '<div class="talent-actions">' +
+          '<button class="talent-action-btn" onclick="editTalent(' + t.id + ');event.stopPropagation()" title="編輯">✏️</button>' +
+          '<button class="talent-action-btn del" onclick="deleteTalent(' + t.id + ');event.stopPropagation()" title="刪除">✕</button>' +
+          '<button class="talent-action-btn" onclick="moveTalentStatus(' + t.id + ');event.stopPropagation()" title="切換狀態">⇄</button>' +
+        '</div>' +
+      '</div>' +
+      (tagsHtml ? '<div class="talent-tags">' + tagsHtml + '</div>' : '') +
+      (t.note ? '<div class="talent-note">' + escHtml(t.note) + '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function updateTalentBadges() {
+  ['active','passive'].forEach(s => {
+    const b = document.getElementById('badge-' + s + '-talent');
+    if (b) b.textContent = (state.talents||[]).filter(t => t.status === s).length;
+  });
+}
+
+function renderTalent() {
+  if (!state.talents) state.talents = [];
+  if (!state.nextTalentId) state.nextTalentId = 1;
+  renderTalentList('active');
+  renderTalentList('passive');
+  updateTalentBadges();
+}
+
+// ══════════════════════════════════════════════
 // Export / Import
 // ══════════════════════════════════════════════
 function exportData() {
@@ -2289,6 +2581,8 @@ function showToast(title, sub) {
 initTheme();
 calInit();
 renderTodos();
+if (!state.talents) state.talents = [];
+if (!state.nextTalentId) state.nextTalentId = 1;
 </script>
 </body>
 </html>
