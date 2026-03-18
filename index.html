@@ -25,13 +25,27 @@
     --radius: 12px;
     --shadow: 0 4px 24px rgba(0,0,0,0.4);
   }
+  /* ── Light theme ── */
+  html.light {
+    --bg: #f0f2f7;
+    --surface: #ffffff;
+    --surface2: #f5f7fb;
+    --surface3: #eaecf3;
+    --text: #1a1f2e;
+    --text-dim: #4a5068;
+    --text-muted: #9099b5;
+    --border: #dde0eb;
+    --shadow: 0 4px 24px rgba(0,0,0,0.10);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { transition: background .25s, color .25s; }
   body {
     font-family: 'Noto Sans TC', sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background .25s, color .25s;
   }
 
   /* ── Layout ── */
@@ -606,6 +620,66 @@
   }
   .progress-ring-sub { display: block; font-size: 9px; color: var(--text-muted); font-family: 'Noto Sans TC'; }
 
+  /* ── Todo flat list mode ── */
+  .todo-flat-list {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .flat-section-header {
+    padding: 8px 16px; background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--text-muted);
+    font-family: 'Space Mono', monospace;
+  }
+  .flat-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    transition: background .12s;
+  }
+  .flat-item:last-child { border-bottom: none; }
+  .flat-item:hover { background: var(--surface2); }
+  .flat-item.flat-done { opacity: .45; }
+  .flat-check {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 10px; transition: all .15s;
+  }
+  .flat-item:hover .flat-check { border-color: var(--accent3); }
+  .flat-item.flat-done .flat-check { background: var(--success); border-color: var(--success); color: #fff; }
+  .flat-text {
+    flex: 1; font-size: 13px; outline: none;
+    background: transparent; border: none; color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif; cursor: text;
+    padding: 0;
+  }
+  .flat-item.flat-done .flat-text { text-decoration: line-through; color: var(--text-muted); }
+  .flat-text:focus { color: var(--text); }
+  .flat-tag { font-size: 9px; font-family: 'Space Mono', monospace; font-weight: 700;
+    padding: 2px 7px; border-radius: 4px; flex-shrink: 0; text-transform: uppercase; }
+  .flat-time { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--accent3); flex-shrink: 0; }
+  .flat-del { background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 13px; opacity: 0; transition: opacity .15s; padding: 2px 4px; border-radius: 3px; }
+  .flat-item:hover .flat-del { opacity: 1; }
+  .flat-del:hover { color: var(--danger); }
+  .flat-add-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .flat-add-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 13px; font-family: 'Noto Sans TC', sans-serif;
+  }
+  .flat-add-input::placeholder { color: var(--text-muted); }
+  .flat-add-select {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 4px 8px; font-size: 11px;
+    font-family: 'Noto Sans TC', sans-serif; outline: none; cursor: pointer;
+  }
+
   /* ── Animations ── */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .page.active { animation: fadeIn .25s ease; }
@@ -674,6 +748,10 @@
       <span class="icon">📈</span> 本週數據
     </div>
     <div class="nav-divider"></div>
+    <div class="nav-item" onclick="toggleTheme()" id="theme-nav-item" title="切換深色/淺色">
+      <span class="icon" id="theme-icon">☀️</span> <span id="theme-label">淺色模式</span>
+    </div>
+    <div class="nav-divider"></div>
     <div class="nav-item" onclick="exportData()" title="匯出所有資料為 JSON 備份檔">
       <span class="icon">💾</span> 匯出備份
     </div>
@@ -709,7 +787,11 @@
           <h1>📋 每日待辦</h1>
           <p>完成任務，保持動力！</p>
         </div>
-        <button class="btn btn-primary" onclick="openAddTodo()">＋ 新增任務</button>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="view-toggle-btn active" id="todo-view-btn-section" onclick="setTodoView('section')" title="分類模式">▦</button>
+          <button class="view-toggle-btn" id="todo-view-btn-list" onclick="setTodoView('list')" title="清單模式">☰</button>
+          <button class="btn btn-primary" onclick="openAddTodo()">＋ 新增任務</button>
+        </div>
       </div>
     </div>
 
@@ -739,7 +821,12 @@
     </div>
 
     <!-- Todo sections -->
-    <div class="todo-sections-grid" id="todo-sections-grid"></div>
+    <div id="todo-view-section">
+      <div class="todo-sections-grid" id="todo-sections-grid"></div>
+    </div>
+    <div id="todo-view-list" style="display:none;">
+      <div class="todo-flat-list" id="todo-flat-list"></div>
+    </div>
   </div>
 
   <!-- ══ PAGE: Dashboard ══ -->
@@ -1391,6 +1478,99 @@ function initSectionDnd() {
   });
 }
 
+// ── Todo view toggle ──
+let _todoView = 'section'; // 'section' | 'list'
+
+function setTodoView(mode) {
+  _todoView = mode;
+  document.getElementById('todo-view-btn-section').classList.toggle('active', mode === 'section');
+  document.getElementById('todo-view-btn-list').classList.toggle('active', mode === 'list');
+  document.getElementById('todo-view-section').style.display = mode === 'section' ? '' : 'none';
+  document.getElementById('todo-view-list').style.display    = mode === 'list'    ? '' : 'none';
+  if (mode === 'list') renderFlatList();
+}
+
+function renderFlatList() {
+  const container = document.getElementById('todo-flat-list');
+  if (!container) return;
+  const vdk = getViewDateKey();
+  const tk  = todayKey();
+
+  let html = '';
+  TODO_SECTIONS.forEach(s => {
+    const items = (state.todos[s.key] || [])
+      .filter(t => t.date === vdk || (!t.date && vdk === tk));
+    if (items.length === 0) return;
+    html += `<div class="flat-section-header" style="color:${s.color}">${s.label}</div>`;
+    html += items.map(t => {
+      const isOverdue = t.time && !t.done && isTimePast(t.date, t.time);
+      return `
+        <div class="flat-item${t.done ? ' flat-done' : ''}" id="flat-${s.key}-${t.id}">
+          <div class="flat-check" onclick="toggleTodoFlat('${s.key}',${t.id})">${t.done ? '✓' : ''}</div>
+          <input class="flat-text" type="text" value="${t.text.replace(/"/g,'&quot;')}"
+            onblur="saveFlatText('${s.key}',${t.id},this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()" />
+          ${t.time ? `<span class="flat-time${isOverdue?' overdue':''}">⏰ ${t.time}</span>` : ''}
+          <span class="flat-tag tag-${t.tag}">${t.tag.toUpperCase()}</span>
+          <button class="flat-del" onclick="confirmDeleteTodo('${s.key}',${t.id},this.dataset.txt)"
+            data-txt="${t.text.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}">✕</button>
+        </div>`;
+    }).join('');
+  });
+
+  // quick-add row
+  html += `
+    <div class="flat-add-row">
+      <span style="color:var(--text-muted);font-size:16px;line-height:1">＋</span>
+      <input class="flat-add-input" id="flat-add-text" placeholder="快速新增任務..."
+        onkeydown="if(event.key==='Enter') addFlatTodo()" />
+      <select class="flat-add-select" id="flat-add-tag">
+        ${TODO_SECTIONS.map(s => `<option value="${s.key}">${s.label}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm btn-outline" onclick="addFlatTodo()">新增</button>
+    </div>`;
+
+  if (html === `
+    <div class="flat-add-row">
+      <span style="color:var(--text-muted);font-size:16px;line-height:1">＋</span>
+      <input class="flat-add-input" id="flat-add-text" placeholder="快速新增任務..."
+        onkeydown="if(event.key==='Enter') addFlatTodo()" />
+      <select class="flat-add-select" id="flat-add-tag">
+        ${TODO_SECTIONS.map(s => `<option value="${s.key}">${s.label}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm btn-outline" onclick="addFlatTodo()">新增</button>
+    </div>`) {
+    // no items — show empty state before add row
+    container.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-icon">✅</div>今天還沒有待辦事項</div>` + html;
+    return;
+  }
+  container.innerHTML = html;
+}
+
+function toggleTodoFlat(sec, id) {
+  toggleTodo(sec, id);
+  if (_todoView === 'list') setTimeout(() => renderFlatList(), 50);
+}
+
+function saveFlatText(sec, id, newText) {
+  const item = (state.todos[sec] || []).find(t => t.id === id);
+  if (!item || item.text === newText.trim()) return;
+  item.text = newText.trim();
+  save();
+}
+
+function addFlatTodo() {
+  const textEl = document.getElementById('flat-add-text');
+  const tagEl  = document.getElementById('flat-add-tag');
+  const text   = textEl.value.trim();
+  if (!text) return;
+  const sec = tagEl.value;
+  if (!state.todos[sec]) state.todos[sec] = [];
+  state.todos[sec].push({ id: state.nextTodoId++, text, tag: sec, note: '', done: false, date: getViewDateKey(), time: '' });
+  textEl.value = '';
+  save(); renderTodos(); renderFlatList();
+}
+
 function openDoneModal() {
   const vdk = getViewDateKey();
   const isToday = vdk === todayKey();
@@ -2020,6 +2200,29 @@ document.getElementById('todo-text').addEventListener('keydown', e => { if (e.ke
 document.getElementById('cand-name').addEventListener('keydown', e => { if (e.key === 'Enter') addCandidate(); });
 
 // ══════════════════════════════════════════════
+// Theme
+// ══════════════════════════════════════════════
+function initTheme() {
+  const saved = localStorage.getItem('hh_theme') || 'dark';
+  applyTheme(saved, false);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+  applyTheme(current === 'dark' ? 'light' : 'dark', true);
+}
+
+function applyTheme(mode, save) {
+  const isLight = mode === 'light';
+  document.documentElement.classList.toggle('light', isLight);
+  const icon  = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if (icon)  icon.textContent  = isLight ? '🌙' : '☀️';
+  if (label) label.textContent = isLight ? '深色模式' : '淺色模式';
+  if (save) localStorage.setItem('hh_theme', mode);
+}
+
+// ══════════════════════════════════════════════
 // Export / Import
 // ══════════════════════════════════════════════
 function exportData() {
@@ -2083,6 +2286,7 @@ function showToast(title, sub) {
 // Init
 // ══════════════════════════════════════════════
 // updateDateDisplay() already called above during date-nav init
+initTheme();
 calInit();
 renderTodos();
 </script>
