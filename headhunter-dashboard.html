@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>獵頭工作台</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --surface3: #242840;
+    --accent: #f0b429;
+    --accent2: #e05c5c;
+    --accent3: #4ecdc4;
+    --accent4: #a78bfa;
+    --text: #e8eaf0;
+    --text-dim: #8891aa;
+    --text-muted: #4a5068;
+    --border: #252a3a;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px; min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 10;
+  }
+  .main { margin-left: 220px; flex: 1; padding: 28px; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .logo {
+    padding: 24px 20px 20px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo span { display: block; color: var(--text-dim); font-size: 10px; font-weight: 400; margin-top: 2px; letter-spacing: 1px; }
+  .nav { padding: 12px 0; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer;
+    font-size: 13px; color: var(--text-dim);
+    transition: all .18s; border-left: 3px solid transparent;
+    user-select: none;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(240,180,41,.08); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+  .nav-divider { height: 1px; background: var(--border); margin: 8px 16px; }
+  .today-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .date-nav {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .date-nav-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 6px;
+    width: 26px; height: 26px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s; flex-shrink: 0;
+  }
+  .date-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .date-nav-center {
+    flex: 1; text-align: center; cursor: pointer;
+    padding: 3px 0; border-radius: 6px; transition: background .15s;
+    position: relative;
+  }
+  .date-nav-center:hover { background: var(--surface2); }
+  .date-nav-center strong { display: block; color: var(--accent3); font-family: 'Space Mono', monospace; font-size: 12px; }
+  .date-nav-today-dot {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); margin-top: 3px;
+    opacity: 0; transition: opacity .2s;
+  }
+  .date-nav-today-dot.hidden { opacity: 0; }
+  .date-nav-today-dot.visible { opacity: 1; }
+  .view-date-banner {
+    display: none; background: rgba(240,180,41,.12); border-bottom: 1px solid rgba(240,180,41,.3);
+    padding: 6px 16px; font-size: 11px; color: var(--accent);
+    font-family: 'Space Mono', monospace; text-align: center; letter-spacing: .5px;
+    cursor: pointer;
+  }
+  .view-date-banner.show { display: block; }
+
+  /* ── Pages ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Headers ── */
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header p { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px;
+    font-family: 'Noto Sans TC', sans-serif;
+    cursor: pointer; border: none; font-weight: 500;
+    transition: all .18s; user-select: none;
+  }
+  .btn-primary { background: var(--accent); color: #1a1200; }
+  .btn-primary:hover { background: #f8c94e; transform: translateY(-1px); }
+  .btn-outline { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: rgba(248,113,113,.15); color: var(--danger); border: 1px solid rgba(248,113,113,.3); }
+  .btn-danger:hover { background: rgba(248,113,113,.25); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+  /* ── Stats Row ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .stat-card.s1::before { background: var(--accent); }
+  .stat-card.s2::before { background: var(--accent3); }
+  .stat-card.s3::before { background: var(--accent4); }
+  .stat-card.s4::before { background: var(--accent2); }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-family: 'Space Mono', monospace; font-size: 28px; font-weight: 700; margin-top: 6px; }
+  .stat-card.s1 .stat-value { color: var(--accent); }
+  .stat-card.s2 .stat-value { color: var(--accent3); }
+  .stat-card.s3 .stat-value { color: var(--accent4); }
+  .stat-card.s4 .stat-value { color: var(--accent2); }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .stat-clickable { cursor: pointer; transition: border .2s, transform .15s !important; }
+  .stat-clickable:hover { border-color: var(--accent) !important; transform: translateY(-2px); }
+  .stat-hint { font-size: 10px; color: var(--accent); margin-top: 6px; opacity: .7; font-family: 'Space Mono', monospace; }
+  /* Done modal */
+  .done-modal-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+  .done-modal-list::-webkit-scrollbar { width: 4px; }
+  .done-modal-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .done-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; background: var(--surface2);
+    border-radius: 8px; border: 1px solid var(--border);
+    transition: border .15s;
+  }
+  .done-item:hover { border-color: var(--success); }
+  .done-check-icon {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--success); display: flex; align-items: center;
+    justify-content: center; font-size: 11px; color: #fff; flex-shrink: 0;
+  }
+  .done-item-body { flex: 1; min-width: 0; }
+  .done-item-text { font-size: 13px; font-weight: 500; }
+  .done-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; display: flex; gap: 8px; align-items: center; }
+  .done-section-label {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    font-family: 'Space Mono', monospace; text-transform: uppercase;
+  }
+  .done-empty { text-align: center; padding: 40px 0; color: var(--text-muted); font-size: 13px; }
+  .done-empty .empty-icon { font-size: 36px; margin-bottom: 10px; }
+  .done-group-header {
+    font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 1px; font-family: 'Space Mono', monospace;
+    padding: 4px 2px; margin-top: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .done-group-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── Calendar modal (sidebar) ── */
+  /* ── Calendar modal (sidebar) ── */
+  /* ── Calendar modal (sidebar) ── */
+  .cal-modal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-modal-dow { text-align:center; font-size:9px; font-weight:600; color:var(--text-muted); padding:3px 0; font-family:'Space Mono',monospace; }
+  .cal-modal-day {
+    border-radius:6px; padding:5px 2px; text-align:center; cursor:pointer;
+    border:1px solid transparent; transition:all .15s; font-size:11px; font-weight:500;
+  }
+  .cal-modal-day:hover { background:var(--surface2); border-color:var(--border); }
+  .cal-modal-day.cm-today { background:rgba(240,180,41,.12); border-color:var(--accent); color:var(--accent); font-weight:700; }
+  .cal-modal-day.cm-selected { background:rgba(78,205,196,.15); border-color:var(--accent3) !important; color:var(--accent3); font-weight:700; }
+  .cal-modal-day.cm-other { opacity:.3; cursor:default; }
+  .cal-modal-day.cm-has-todo::after { content:''; display:block; width:4px; height:4px; border-radius:50%; background:var(--accent3); margin:2px auto 0; }
+  .cm-nav-btn { background:none; border:1px solid var(--border); color:var(--text-dim); border-radius:6px; width:26px; height:26px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .cm-nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* ── Todo ── */
+  .todo-sections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .todo-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: box-shadow .2s, transform .15s; }
+  .todo-section.dragging { opacity: .5; box-shadow: 0 8px 32px rgba(0,0,0,.5); transform: scale(1.02); }
+  .todo-section.drag-over { border-color: var(--accent3); box-shadow: 0 0 0 2px var(--accent3); }
+  .section-move-btns { display: flex; gap: 2px; }
+  .section-move-btn {
+    background: none; border: 1px solid transparent; color: var(--text-muted);
+    border-radius: 4px; width: 22px; height: 22px; cursor: pointer;
+    font-size: 11px; display: flex; align-items: center; justify-content: center;
+    transition: all .15s; line-height: 1;
+  }
+  .section-move-btn:hover { border-color: var(--border); color: var(--accent3); background: var(--surface2); }
+  .section-move-btn:disabled { opacity: .2; cursor: default; }
+  .todo-section-header {
+    padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .todo-section-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; padding: 0 6px;
+    border-radius: 10px; font-size: 11px; font-weight: 700;
+    font-family: 'Space Mono', monospace;
+  }
+  .badge-gold { background: rgba(240,180,41,.2); color: var(--accent); }
+  .badge-teal { background: rgba(78,205,196,.2); color: var(--accent3); }
+  .badge-purple { background: rgba(167,139,250,.2); color: var(--accent4); }
+  .badge-red { background: rgba(224,92,92,.2); color: var(--accent2); }
+  .badge-green { background: rgba(52,211,153,.2); color: var(--success); }
+
+  .todo-list { padding: 10px; max-height: 380px; overflow-y: auto; }
+  .todo-list::-webkit-scrollbar { width: 4px; }
+  .todo-list::-webkit-scrollbar-track { background: transparent; }
+  .todo-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .todo-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 10px;
+    border-radius: 8px; cursor: pointer;
+    transition: all .15s; position: relative;
+    border: 1px solid transparent;
+    margin-bottom: 4px;
+  }
+  .todo-item:hover { background: var(--surface2); border-color: var(--border); }
+  .todo-item.done { opacity: .5; }
+  .todo-item.done .todo-text { text-decoration: line-through; color: var(--text-muted); }
+
+  .todo-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all .18s; font-size: 11px;
+  }
+  .todo-item:hover .todo-check { border-color: var(--accent3); }
+  .todo-item.done .todo-check { background: var(--success); border-color: var(--success); color: #fff; }
+
+  .todo-text { font-size: 13px; flex: 1; }
+  .todo-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .todo-time {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-family: 'Space Mono', monospace; font-size: 10px;
+    color: var(--accent3); font-weight: 700;
+    background: rgba(78,205,196,.1); border-radius: 4px;
+    padding: 1px 6px; white-space: nowrap; flex-shrink: 0;
+  }
+  .todo-time.overdue { color: var(--danger); background: rgba(248,113,113,.1); }
+  .cal-time-dot { font-size: 8px; color: var(--text-muted); }
+  .todo-tag {
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+    font-family: 'Space Mono', monospace; text-transform: uppercase;
+  }
+  .tag-ii { background: rgba(167,139,250,.2); color: var(--accent4); }
+  .tag-ps { background: rgba(78,205,196,.2); color: var(--accent3); }
+  .tag-bm { background: rgba(240,180,41,.2); color: var(--accent); }
+  .tag-bc { background: rgba(52,211,153,.2); color: var(--success); }
+  .tag-ci { background: rgba(224,92,92,.2); color: var(--accent2); }
+  .tag-ppc { background: rgba(251,191,36,.2); color: var(--warning); }
+  .tag-other { background: var(--surface3); color: var(--text-dim); }
+
+  .delete-btn {
+    opacity: 0; width: 20px; height: 20px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: var(--danger);
+    cursor: pointer; font-size: 14px; transition: all .15s; flex-shrink: 0;
+  }
+  .todo-item:hover .delete-btn { opacity: 1; }
+  .delete-btn:hover { background: rgba(248,113,113,.15); }
+
+  /* add todo form */
+  .add-todo-form {
+    padding: 10px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px;
+  }
+  .add-todo-form input, .add-todo-form select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 7px 10px;
+    font-size: 12px; font-family: 'Noto Sans TC', sans-serif;
+    outline: none; transition: border .15s;
+  }
+  .add-todo-form input { flex: 1; }
+  .add-todo-form input:focus, .add-todo-form select:focus { border-color: var(--accent3); }
+  .add-todo-form select option { background: var(--surface2); }
+
+  /* ── Reward Overlay ── */
+  .reward-overlay {
+    position: fixed; inset: 0; z-index: 999;
+    pointer-events: none; overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute; width: 8px; height: 8px;
+    border-radius: 2px;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  .reward-toast {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -60px);
+    background: linear-gradient(135deg, #1c2030, #242840);
+    border: 1px solid var(--accent);
+    border-radius: 16px; padding: 20px 32px;
+    text-align: center; z-index: 1000;
+    box-shadow: 0 0 40px rgba(240,180,41,.3), var(--shadow);
+    animation: toastPop .4s cubic-bezier(.34,1.56,.64,1) forwards;
+    pointer-events: none;
+  }
+  @keyframes toastPop {
+    from { opacity: 0; transform: translate(-50%, -40px) scale(.8); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  .reward-emoji { font-size: 36px; display: block; margin-bottom: 8px; }
+  .reward-title { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .reward-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  /* ── Dashboard ── */
+  .activity-collapsible {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .activity-toggle {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px; cursor: pointer; user-select: none;
+    transition: background .15s;
+  }
+  .activity-toggle:hover { background: var(--surface2); }
+  .activity-chevron { font-size: 10px; color: var(--text-muted); transition: transform .25s; }
+  .activity-chevron.open { transform: rotate(180deg); }
+  .activity-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height .3s ease, padding .3s ease;
+    padding: 0 14px;
+  }
+  .activity-body.open { max-height: 400px; padding: 10px 14px 14px; }
+  .jobs-list { display: flex; flex-direction: column; gap: 14px; }
+  .jobs-list.list-mode { gap: 4px; }
+
+  /* view toggle buttons */
+  .view-toggle-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-muted); border-radius: 6px;
+    width: 28px; height: 28px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .view-toggle-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+  .view-toggle-btn.active { background: var(--accent3); border-color: var(--accent3); color: #0d1117; }
+
+  /* list-mode job row */
+  .job-list-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px;
+    cursor: pointer; transition: border .15s, background .15s;
+    user-select: none;
+  }
+  .job-list-row:hover { border-color: var(--accent); background: var(--surface2); }
+  .job-list-row.list-dragging { opacity: .45; transform: scale(1.01); }
+  .job-list-row.list-drag-over { border-color: var(--accent3); box-shadow: 0 0 0 2px var(--accent3); }
+  .jl-drag { color: var(--text-muted); font-size: 13px; cursor: grab; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+  .job-list-row:hover .jl-drag { opacity: 1; }
+  .jl-title { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jl-company { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+  .jl-pipeline { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+  .jl-stage {
+    font-size: 9px; font-family: 'Space Mono', monospace; font-weight: 700;
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+  }
+  .jl-stage.has-cands { background: rgba(78,205,196,.15); color: var(--accent3); }
+  .jl-stage.no-cands  { background: var(--surface3); color: var(--text-muted); opacity: .5; }
+  .jl-move-btns { display: flex; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+  .job-list-row:hover .jl-move-btns { opacity: 1; }
+  .jl-move-btn {
+    background: none; border: 1px solid transparent; color: var(--text-muted);
+    border-radius: 4px; width: 20px; height: 20px; cursor: pointer;
+    font-size: 10px; display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .jl-move-btn:hover { border-color: var(--border); color: var(--accent3); background: var(--surface2); }
+  .jl-move-btn:disabled { opacity: .2; cursor: default; }
+  .jl-delete { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; opacity: 0; transition: opacity .15s; padding: 2px 4px; border-radius: 4px; flex-shrink: 0; }
+  .job-list-row:hover .jl-delete { opacity: 1; }
+  .jl-delete:hover { color: var(--danger); background: rgba(248,113,113,.12); }
+  .job-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    transition: border .2s, box-shadow .2s, transform .15s;
+  }
+  .job-card:hover { border-color: var(--accent); }
+  .job-card.dragging { opacity: .45; transform: scale(1.02); box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  .job-card.drag-over { border-color: var(--accent3); box-shadow: 0 0 0 2px var(--accent3); }
+  .job-drag-handle {
+    display: flex; align-items: center; justify-content: center;
+    width: 20px; cursor: grab; color: var(--text-muted); font-size: 13px;
+    flex-shrink: 0; opacity: 0; transition: opacity .15s;
+  }
+  .job-card:hover .job-drag-handle { opacity: 1; }
+  .job-drag-handle:active { cursor: grabbing; }
+  .job-move-btns { display: flex; gap: 2px; }
+  .job-move-btn {
+    background: none; border: 1px solid transparent; color: var(--text-muted);
+    border-radius: 4px; width: 22px; height: 22px; cursor: pointer;
+    font-size: 11px; display: flex; align-items: center; justify-content: center;
+    transition: all .15s; line-height: 1; opacity: 0;
+  }
+  .job-card:hover .job-move-btn { opacity: 1; }
+  .job-move-btn:hover { border-color: var(--border); color: var(--accent3); background: var(--surface2); }
+  .job-move-btn:disabled { opacity: .15 !important; cursor: default; }
+  .job-card-header {
+    padding: 14px 18px; display: flex; justify-content: space-between;
+    align-items: flex-start; cursor: pointer; user-select: none;
+  }
+  .job-title { font-size: 14px; font-weight: 600; }
+  .job-company { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+  .job-status-badge {
+    font-size: 10px; font-weight: 700; padding: 3px 9px;
+    border-radius: 6px; font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+  }
+  .status-active { background: rgba(52,211,153,.15); color: var(--success); }
+  .status-warm { background: rgba(240,180,41,.15); color: var(--accent); }
+  .status-cold { background: var(--surface3); color: var(--text-muted); }
+  .job-body { padding: 0 18px 16px; }
+  .pipeline {
+    display: flex; align-items: stretch;
+    gap: 0; margin-bottom: 10px; padding: 8px 0 4px;
+    border-radius: 8px; overflow: hidden;
+    background: var(--surface2); border: 1px solid var(--border);
+  }
+  .pipe-step {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 7px 4px 6px; gap: 4px; position: relative;
+    border-right: 1px solid var(--border); transition: background .15s;
+  }
+  .pipe-step:last-child { border-right: none; }
+  .pipe-step.has-candidates { background: var(--surface3); }
+  .pipe-label {
+    font-size: 9px; font-family: 'Space Mono', monospace;
+    text-transform: uppercase; letter-spacing: .5px;
+    color: var(--text-muted); white-space: nowrap;
+  }
+  .pipe-step.has-candidates .pipe-label { color: var(--text-dim); }
+  .pipe-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--surface3); border: 2px solid var(--border);
+    transition: all .2s;
+  }
+  .pipe-step.has-candidates .pipe-dot {
+    background: var(--pipe-color); border-color: var(--pipe-color);
+    box-shadow: 0 0 6px var(--pipe-color);
+  }
+  .pipe-count {
+    font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
+    color: var(--text-muted); line-height: 1;
+  }
+  .pipe-step.has-candidates .pipe-count { color: var(--pipe-color); }
+
+  .candidates-mini { margin-top: 10px; }
+  .candidate-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 6px; border-bottom: 1px solid var(--border);
+    font-size: 12px; border-radius: 6px; transition: background .15s;
+  }
+  .candidate-row:last-child { border-bottom: none; }
+  .candidate-row:hover { background: var(--surface2); }
+  .candidate-name { font-weight: 600; white-space: nowrap; min-width: 56px; }
+  .candidate-stage {
+    font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    font-family: 'Space Mono', monospace; font-weight: 600;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .stage-target { background: var(--surface3); color: var(--text-muted); }
+  .stage-ii { background: rgba(167,139,250,.2); color: var(--accent4); }
+  .stage-ps { background: rgba(78,205,196,.2); color: var(--accent3); }
+  .stage-ci { background: rgba(224,92,92,.2); color: var(--accent2); }
+  .stage-offer { background: rgba(240,180,41,.2); color: var(--accent); }
+  .stage-pass { background: rgba(52,211,153,.2); color: var(--success); }
+  .stage-ng { background: rgba(248,113,113,.15); color: var(--danger); }
+  .cand-note-edit {
+    flex: 1; font-size: 12px; color: var(--text-dim);
+    background: transparent; border: 1px solid transparent;
+    border-radius: 5px; padding: 3px 7px;
+    outline: none; min-width: 0;
+    transition: border .15s, background .15s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cand-note-edit:empty::before { content: attr(data-placeholder); color: var(--text-muted); }
+  .cand-note-edit:hover { border-color: var(--border); background: var(--surface3); }
+  .cand-note-edit:focus { border-color: var(--accent3); background: var(--surface2); color: var(--text); white-space: normal; overflow: visible; }
+  /* card context — slimmer */
+  .candidates-mini .cand-note-edit {
+    font-size: 11px; flex: 2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .candidates-mini .cand-note-edit:focus { white-space: normal; overflow: visible; }
+
+  /* Right panel */
+  .right-panel { display: flex; flex-direction: column; gap: 20px; }
+  .activity-list { display: flex; flex-direction: column; gap: 10px; }
+  .activity-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 14px; background: var(--surface2); border-radius: 8px;
+    border: 1px solid transparent; font-size: 12px;
+  }
+  .activity-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .activity-content { flex: 1; }
+  .activity-title { font-weight: 500; color: var(--text); }
+  .activity-time { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+
+  /* ── Modals ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 500; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; width: 520px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto;
+    transform: translateY(20px); transition: transform .25s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-title { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 4px; }
+  .modal-close:hover { color: var(--text); }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; display: block; font-weight: 500; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 9px 12px;
+    font-size: 13px; font-family: 'Noto Sans TC', sans-serif;
+    outline: none; transition: border .15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent3); }
+  .form-select option { background: var(--surface2); }
+  .form-textarea { min-height: 80px; resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface2); border-radius: 10px; padding: 4px; }
+  .tab {
+    flex: 1; padding: 8px 12px; border-radius: 7px; font-size: 12px;
+    font-weight: 500; cursor: pointer; text-align: center;
+    transition: all .15s; color: var(--text-dim); border: none; background: none;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+  .tab.active { background: var(--surface3); color: var(--text); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Progress ring */
+  .progress-ring { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+  .progress-ring svg { transform: rotate(-90deg); }
+  .progress-ring-text {
+    position: absolute; text-align: center;
+    font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: var(--accent);
+  }
+  .progress-ring-sub { display: block; font-size: 9px; color: var(--text-muted); font-family: 'Noto Sans TC'; }
+
+  /* ── Animations ── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .page.active { animation: fadeIn .25s ease; }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Pipeline full row */
+  .full-col { grid-column: 1 / -1; }
+  .add-candidate-row {
+    display: flex; gap: 8px; margin-top: 12px;
+  }
+  .add-candidate-row input, .add-candidate-row select {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 7px; padding: 7px 10px;
+    font-size: 12px; font-family: 'Noto Sans TC', sans-serif;
+    outline: none; flex: 1;
+  }
+  .add-candidate-row input:focus, .add-candidate-row select:focus { border-color: var(--accent3); }
+  .empty-state { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; }
+  .empty-state .empty-icon { font-size: 32px; margin-bottom: 8px; }
+  .job-delete-btn {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: transparent; border: 1px solid transparent;
+    color: var(--text-muted); font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s; flex-shrink: 0; line-height: 1;
+  }
+  .job-delete-btn:hover { background: rgba(248,113,113,.18); border-color: rgba(248,113,113,.4); color: var(--danger); }
+  /* Confirm modal */
+  .confirm-modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px 28px 22px; width: 360px; max-width: 92vw;
+    transform: translateY(20px); transition: transform .25s;
+    text-align: center;
+  }
+  .modal-overlay.open .confirm-modal { transform: translateY(0); }
+  .confirm-icon { font-size: 36px; margin-bottom: 12px; }
+  .confirm-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .confirm-desc { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 10px; margin-top: 22px; justify-content: center; }
+  @keyframes toastSlideUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="logo">HEADHUNTER<span>WORK DESK</span></div>
+  <div class="nav">
+    <div class="nav-item active" onclick="showPage('today')">
+      <span class="icon">📋</span> 每日待辦
+    </div>
+    <div class="nav-item" onclick="showPage('dashboard')">
+      <span class="icon">📊</span> 案子看板
+    </div>
+    <div class="nav-item" onclick="showPage('stats')">
+      <span class="icon">📈</span> 本週數據
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-item" onclick="exportData()" title="匯出所有資料為 JSON 備份檔">
+      <span class="icon">💾</span> 匯出備份
+    </div>
+    <div class="nav-item" onclick="document.getElementById('import-file').click()" title="從備份檔還原資料">
+      <span class="icon">📂</span> 匯入備份
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
+  </div>
+  <div class="sidebar-footer">
+    <div class="today-badge" id="today-badge-label">查看日期</div>
+    <div class="date-nav">
+      <button class="date-nav-btn" onclick="shiftViewDate(-1)" title="前一天">‹</button>
+      <div class="date-nav-center" onclick="openCalModal()" title="選擇日期">
+        <strong id="today-date"></strong>
+        <span class="date-nav-today-dot" id="date-nav-dot"></span>
+      </div>
+      <button class="date-nav-btn" onclick="shiftViewDate(1)" title="後一天">›</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- ══ PAGE: Today ══ -->
+  <div class="page active" id="page-today">
+    <div class="view-date-banner" id="view-date-banner" onclick="resetViewDate()">
+      📅 查看中：<span id="view-date-banner-text"></span> ── 點擊回到今天
+    </div>
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h1>📋 每日待辦</h1>
+          <p>完成任務，保持動力！</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddTodo()">＋ 新增任務</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card s1 stat-clickable" onclick="openDoneModal()" title="查看已完成事項">
+        <div class="stat-label">今日完成</div>
+        <div class="stat-value" id="stat-done">0</div>
+        <div class="stat-sub">/ <span id="stat-total">0</span> 任務</div>
+        <div class="stat-hint">點擊查看 ›</div>
+      </div>
+      <div class="stat-card s2">
+        <div class="stat-label">待辦電話</div>
+        <div class="stat-value" id="stat-calls">0</div>
+        <div class="stat-sub">通電話</div>
+      </div>
+      <div class="stat-card s3">
+        <div class="stat-label">PS</div>
+        <div class="stat-value" id="stat-ps">0</div>
+        <div class="stat-sub">份履歷</div>
+      </div>
+      <div class="stat-card s4">
+        <div class="stat-label">II 安排</div>
+        <div class="stat-value" id="stat-ii">0</div>
+        <div class="stat-sub">場面談</div>
+      </div>
+    </div>
+
+    <!-- Todo sections -->
+    <div class="todo-sections-grid" id="todo-sections-grid"></div>
+  </div>
+
+  <!-- ══ PAGE: Dashboard ══ -->
+  <div class="page" id="page-dashboard">
+    <div class="page-header">
+      <div class="header-row">
+        <div>
+          <h1>📊 案子看板</h1>
+          <p>追蹤所有進行中的職缺與人選</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddJob()">＋ 新增案子</button>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-left:4px;">
+          <span class="card-title" style="margin-bottom:0;">進行中案子</span>
+          <div style="display:flex; gap:6px;">
+            <button class="view-toggle-btn active" id="view-btn-card" onclick="setJobView('card')" title="卡片模式">▦</button>
+            <button class="view-toggle-btn" id="view-btn-list" onclick="setJobView('list')" title="清單模式">☰</button>
+          </div>
+        </div>
+        <div class="jobs-list" id="jobs-list"></div>
+      </div>
+      <div class="activity-collapsible" id="activity-collapsible">
+        <div class="activity-toggle" onclick="toggleActivity()">
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span>🕐</span>
+            <span style="font-size:13px; font-weight:600; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">近期活動</span>
+            <span class="badge badge-teal" id="activity-count">0</span>
+          </span>
+          <span class="activity-chevron" id="activity-chevron">▼</span>
+        </div>
+        <div class="activity-body" id="activity-body">
+          <div class="activity-list" id="activity-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: Stats ══ -->
+  <div class="page" id="page-stats">
+    <div class="page-header">
+      <h1>📈 本週數據</h1>
+      <p>追蹤你的關鍵活動指標</p>
+    </div>
+    <div class="stats-grid" style="grid-template-columns: repeat(3,1fr);">
+      <div class="stat-card s1">
+        <div class="stat-label">II 完成</div>
+        <div class="stat-value" id="w-ii">0</div>
+        <div class="stat-sub">本週</div>
+      </div>
+      <div class="stat-card s2">
+        <div class="stat-label">PS</div>
+        <div class="stat-value" id="w-ps">0</div>
+        <div class="stat-sub">本週</div>
+      </div>
+      <div class="stat-card s3">
+        <div class="stat-label">BM / BC</div>
+        <div class="stat-value" id="w-bm">0</div>
+        <div class="stat-sub">本週</div>
+      </div>
+      <div class="stat-card s4">
+        <div class="stat-label">CI 安排</div>
+        <div class="stat-value" id="w-ci">0</div>
+        <div class="stat-sub">本週</div>
+      </div>
+      <div class="stat-card s2">
+        <div class="stat-label">完成率</div>
+        <div class="stat-value" id="w-rate">0%</div>
+        <div class="stat-sub">已完成 / 總任務</div>
+      </div>
+      <div class="stat-card s1">
+        <div class="stat-label">進行案子</div>
+        <div class="stat-value" id="w-jobs">0</div>
+        <div class="stat-sub">個職缺</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px;">
+      <div class="card-title">每日完成紀錄（本週）</div>
+      <div id="weekly-chart" style="display:flex; gap:8px; align-items:flex-end; height:120px; padding:12px 0 0;"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <div id="weekly-labels" style="display:flex; gap:8px; width:100%;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══ Add Todo Modal ══ -->
+<div class="modal-overlay" id="modal-todo">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">新增待辦任務</div>
+      <button class="modal-close" onclick="closeModal('modal-todo')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">任務說明</label>
+      <input type="text" class="form-input" id="todo-text" placeholder="例：打給王大明 - 詢問意願" />
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">分類</label>
+        <select class="form-select" id="todo-tag">
+          <option value="tel">📞 電話</option>
+          <option value="bc">💬 BC（業務電話）</option>
+          <option value="ii">🎙️ II（電話聊 / 面談）</option>
+          <option value="bm">🤝 BM（拜訪 / 客戶 Call）</option>
+          <option value="ppc">🔍 PPC（對焦職缺）</option>
+          <option value="ps">🚀 PS（送出履歷）</option>
+          <option value="other">📁 其他</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">時間（選填）</label>
+        <input type="time" class="form-input" id="todo-time" style="font-family:'Space Mono',monospace; cursor:pointer;" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">備註（選填）</label>
+        <input type="text" class="form-input" id="todo-note" placeholder="補充說明..." />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-todo')">取消</button>
+      <button class="btn btn-primary" onclick="addTodo()">新增任務</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Add Job Modal ══ -->
+<div class="modal-overlay" id="modal-job">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">新增案子</div>
+      <button class="modal-close" onclick="closeModal('modal-job')">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">職缺名稱</label>
+        <input type="text" class="form-input" id="job-title" placeholder="例：Senior PM" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">客戶公司</label>
+        <input type="text" class="form-input" id="job-company" placeholder="例：ABC Corp" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">狀態</label>
+        <select class="form-select" id="job-status">
+          <option value="active">進行中</option>
+          <option value="warm">追蹤中</option>
+          <option value="cold">暫緩</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">薪資範圍</label>
+        <input type="text" class="form-input" id="job-salary" placeholder="例：150-200K" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">職缺備註 / PPC 內容</label>
+      <textarea class="form-textarea" id="job-note" placeholder="職缺要求、重點條件..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-job')">取消</button>
+      <button class="btn btn-primary" onclick="addJob()">建立案子</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Job Detail Modal ══ -->
+<div class="modal-overlay" id="modal-job-detail">
+  <div class="modal" style="width:600px">
+    <div class="modal-header">
+      <div style="flex:1; min-width:0; margin-right:12px;">
+        <div class="modal-title"
+          id="detail-title"
+          contenteditable="true"
+          data-placeholder="職缺名稱..."
+          onblur="saveJobField('title',this)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+          style="outline:none; border-bottom:1px solid transparent; padding-bottom:2px; cursor:text; transition:border .15s;"
+          onfocus="this.style.borderColor='var(--accent3)'"
+          onblur="this.style.borderColor='transparent'; saveJobField('title',this)"
+        ></div>
+        <div style="font-size:13px; color:var(--text-dim); margin-top:5px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span
+            id="detail-company"
+            contenteditable="true"
+            data-placeholder="公司名稱"
+            onblur="saveJobField('company',this)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+            style="outline:none; border-bottom:1px dashed transparent; cursor:text; transition:border .15s; min-width:40px;"
+            onfocus="this.style.borderColor='var(--accent3)'"
+            onblur="this.style.borderColor='transparent'; saveJobField('company',this)"
+          ></span>
+          <span style="color:var(--text-muted)">·</span>
+          <span
+            id="detail-salary"
+            contenteditable="true"
+            data-placeholder="薪資範圍"
+            onblur="saveJobField('salary',this)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+            style="outline:none; border-bottom:1px dashed transparent; cursor:text; transition:border .15s; min-width:40px;"
+            onfocus="this.style.borderColor='var(--accent3)'"
+            onblur="this.style.borderColor='transparent'; saveJobField('salary',this)"
+          ></span>
+          <select id="detail-status" onchange="saveJobField('status',this)"
+            style="font-size:11px; padding:2px 6px; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:5px; outline:none; cursor:pointer; font-family:'Noto Sans TC',sans-serif;">
+            <option value="active">進行中</option>
+            <option value="warm">追蹤中</option>
+            <option value="cold">暫緩</option>
+          </select>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-job-detail')">✕</button>
+    </div>
+    <div id="detail-note" contenteditable="true" data-placeholder="點擊新增備註..." style="font-size:12px; color:var(--text-dim); margin-bottom:16px; padding:10px 14px; background:var(--surface2); border:1px solid transparent; border-radius:8px; outline:none; transition:border .15s, background .15s; cursor:text; min-height:36px;" onblur="saveJobNote(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur();}" onfocus="this.style.borderColor='var(--accent3)';this.style.background='var(--surface3)'" onblur="this.style.borderColor='transparent';this.style.background='var(--surface2)';saveJobNote(this)"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this,'tab-candidates')">👥 人選名單</button>
+      <button class="tab" onclick="switchTab(this,'tab-pipeline')">📊 Pipeline</button>
+    </div>
+
+    <div class="tab-content active" id="tab-candidates">
+      <div id="detail-candidates"></div>
+      <div class="add-candidate-row">
+        <input type="text" id="cand-name" placeholder="人選姓名" />
+        <select id="cand-stage">
+          <option value="target">Target</option>
+          <option value="ii">II</option>
+          <option value="ps">PS</option>
+          <option value="ci">CI</option>
+          <option value="offer">Offer</option>
+                    <option value="ng">NG</option>
+        </select>
+        <input type="text" id="cand-note" placeholder="備註" style="flex:2" />
+        <button class="btn btn-sm btn-primary" onclick="addCandidate()">＋ 加入</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-pipeline">
+      <div id="detail-pipeline"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="deleteCurrentJob()">刪除案子</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-job-detail')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Done Items Modal ══ -->
+<div class="modal-overlay" id="modal-done">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">✅ 已完成事項</div>
+        <div style="font-size:12px; color:var(--text-dim); margin-top:3px;" id="done-modal-subtitle"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-done')">✕</button>
+    </div>
+    <div class="done-modal-list" id="done-modal-list"></div>
+    <div class="modal-footer" style="justify-content:space-between; margin-top:16px;">
+      <span style="font-size:12px; color:var(--text-muted);" id="done-modal-count"></span>
+      <button class="btn btn-outline" onclick="closeModal('modal-done')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Calendar Picker Modal ══ -->
+<div class="modal-overlay" id="modal-cal-picker">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <div class="modal-title">📅 選擇日期</div>
+      <button class="modal-close" onclick="closeModal('modal-cal-picker')">✕</button>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <button class="cm-nav-btn" onclick="cmPrev()">‹</button>
+      <span style="font-size:14px;font-weight:700;" id="cm-title"></span>
+      <button class="cm-nav-btn" onclick="cmNext()">›</button>
+    </div>
+    <div class="cal-modal-grid" id="cm-grid"></div>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-outline btn-sm" onclick="cmSelectToday()">回到今天</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-cal-picker')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Confirm Delete Modal ══ -->
+<div class="modal-overlay" id="modal-confirm-delete">
+  <div class="confirm-modal">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title" id="confirm-title">確定要刪除？</div>
+    <div class="confirm-desc" id="confirm-desc"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-confirm-delete')">取消</button>
+      <button class="btn btn-danger" id="confirm-execute-btn" onclick="">確定刪除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reward Overlay -->
+<div class="reward-overlay" id="reward-overlay"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// Core utils (must be first)
+// ══════════════════════════════════════════════
+function dateKey(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+}
+function todayKey() { return dateKey(new Date()); }
+
+// ══════════════════════════════════════════════
+// State
+// ══════════════════════════════════════════════
+let state = JSON.parse(localStorage.getItem('hh_state') || 'null') || {
+  todos: {
+    tel:   [],
+    bc:    [],
+    ii:    [],
+    bm:    [],
+    ppc:   [],
+    ps:    [],
+    other: [],
+  },
+  jobs: [],
+  activities: [],
+  weeklyDone: [0, 0, 0, 0, 0, 0, 0],
+  nextTodoId: 1,
+  nextJobId: 1,
+  sectionOrder: ['tel','bc','ii','bm','ppc','ps','other'],
+};
+
+function save() { localStorage.setItem('hh_state', JSON.stringify(state)); }
+
+// Migrate old 2-section state to 7-section state
+function migrateState() {
+  const keys = ['tel','bc','ii','bm','ppc','ps','other'];
+  keys.forEach(k => { if (!state.todos[k]) state.todos[k] = []; });
+  // migrate old 'calls' bucket
+  if (state.todos.calls) {
+    state.todos.calls.forEach(t => {
+      const dest = keys.includes(t.tag) ? t.tag : 'other';
+      if (!state.todos[dest].find(x => x.id === t.id)) state.todos[dest].push(t);
+    });
+    delete state.todos.calls;
+    save();
+  }
+  // remove unknown keys
+  Object.keys(state.todos).forEach(k => {
+    if (!keys.includes(k)) delete state.todos[k];
+  });
+  // ensure sectionOrder exists and has all keys
+  if (!state.sectionOrder) state.sectionOrder = [...keys];
+  keys.forEach(k => { if (!state.sectionOrder.includes(k)) state.sectionOrder.push(k); });
+  state.sectionOrder = state.sectionOrder.filter(k => keys.includes(k));
+}
+migrateState();
+
+// ══════════════════════════════════════════════
+// Calendar picker (sidebar modal)
+// ══════════════════════════════════════════════
+let cmYear = new Date().getFullYear(), cmMonth = new Date().getMonth();
+
+function openCalModal() {
+  const vd = getViewDate();
+  cmYear  = vd.getFullYear();
+  cmMonth = vd.getMonth();
+  renderCmGrid();
+  openModal('modal-cal-picker');
+}
+function cmPrev() { cmMonth--; if (cmMonth < 0) { cmMonth = 11; cmYear--; } renderCmGrid(); }
+function cmNext() { cmMonth++; if (cmMonth > 11) { cmMonth = 0; cmYear++; } renderCmGrid(); }
+function cmSelectToday() {
+  viewDateOffset = 0;
+  updateDateDisplay();
+  renderTodos();
+  closeModal('modal-cal-picker');
+}
+
+function renderCmGrid() {
+  const mn = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  document.getElementById('cm-title').textContent = `${cmYear} 年 ${mn[cmMonth]}`;
+  const firstDay    = new Date(cmYear, cmMonth, 1).getDay();
+  const daysInMonth = new Date(cmYear, cmMonth+1, 0).getDate();
+  const daysInPrev  = new Date(cmYear, cmMonth, 0).getDate();
+  const tk  = todayKey();
+  const vdk = getViewDateKey();
+
+  // count todos per date
+  const hasTodo = {};
+  Object.values(state.todos).flat().forEach(t => {
+    const dk = t.date || tk;
+    if (!t.done) hasTodo[dk] = true;
+  });
+
+  const dow = ['日','一','二','三','四','五','六'];
+  let html = dow.map(d => `<div class="cal-modal-dow">${d}</div>`).join('');
+
+  for (let i = 0; i < firstDay; i++) {
+    const day = daysInPrev - firstDay + i + 1;
+    html += `<div class="cal-modal-day cm-other">${day}</div>`;
+  }
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dk = `${cmYear}-${String(cmMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const cls = ['cal-modal-day',
+      dk === tk  ? 'cm-today'    : '',
+      dk === vdk ? 'cm-selected' : '',
+      hasTodo[dk]? 'cm-has-todo' : ''
+    ].filter(Boolean).join(' ');
+    html += `<div class="${cls}" onclick="cmPickDay('${dk}')">${day}</div>`;
+  }
+  const total = firstDay + daysInMonth;
+  const rem   = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= rem; i++) html += `<div class="cal-modal-day cm-other">${i}</div>`;
+
+  document.getElementById('cm-grid').innerHTML = html;
+}
+
+function cmPickDay(dk) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const picked = new Date(dk + 'T00:00:00');
+  viewDateOffset = Math.round((picked - today) / 86400000);
+  updateDateDisplay();
+  renderTodos();
+  closeModal('modal-cal-picker');
+}
+
+// stubs so old calQuickAdd refs don't crash
+
+function isTimePast(date, time) {
+  if (!time) return false;
+  const tk = todayKey();
+  const d = date || tk;
+  if (d > tk) return false;
+  if (d < tk) return true;
+  const now = new Date();
+  const [h, m] = time.split(':').map(Number);
+  return now.getHours() > h || (now.getHours() === h && now.getMinutes() > m);
+}
+
+function calInit() {}
+function renderCal() {} // no-op, replaced by timeline
+function calSelectDay() {}
+function getSelectedDate() { return getViewDateKey() || todayKey(); }
+
+// ══════════════════════════════════════════════
+// Navigation
+// ══════════════════════════════════════════════
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el => {
+    if (el.textContent.includes(p === 'today' ? '每日' : p === 'dashboard' ? '案子' : '本週')) {
+      el.classList.add('active');
+    }
+  });
+  if (p === 'dashboard') renderDashboard();
+  if (p === 'stats') renderStats();
+}
+
+// ══════════════════════════════════════════════
+// Date navigation
+// ══════════════════════════════════════════════
+const days = ['日','一','二','三','四','五','六'];
+let viewDateOffset = 0; // 0 = today, -1 = yesterday, +1 = tomorrow
+
+function getViewDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + viewDateOffset);
+  return d;
+}
+
+function getViewDateKey() { return dateKey(getViewDate()); }
+
+function updateDateDisplay() {
+  const vd = getViewDate();
+  const isToday = viewDateOffset === 0;
+  const label = `${vd.getMonth()+1}/${vd.getDate()} (週${days[vd.getDay()]})`;
+  document.getElementById('today-date').textContent = label;
+  document.getElementById('today-badge-label').textContent = isToday ? 'Today' : (viewDateOffset < 0 ? '過去' : '未來');
+  const dot = document.getElementById('date-nav-dot');
+  dot.className = 'date-nav-today-dot ' + (isToday ? 'hidden' : 'visible');
+  // Banner
+  const banner = document.getElementById('view-date-banner');
+  const bannerText = document.getElementById('view-date-banner-text');
+  if (isToday) {
+    banner.classList.remove('show');
+  } else {
+    const rel = viewDateOffset < 0 ? `${Math.abs(viewDateOffset)} 天前` : `${viewDateOffset} 天後`;
+    bannerText.textContent = `${label}（${rel}）`;
+    banner.classList.add('show');
+  }
+  // (calendar state managed by cmYear/cmMonth in the picker modal)
+}
+
+function shiftViewDate(delta) {
+  viewDateOffset += delta;
+  updateDateDisplay();
+  renderTodos();
+}
+
+function resetViewDate() {
+  viewDateOffset = 0;
+  updateDateDisplay();
+  renderTodos();
+}
+
+// Init date display
+updateDateDisplay();
+
+// ══════════════════════════════════════════════
+// Render Todos
+// ══════════════════════════════════════════════
+const TODO_SECTIONS = [
+  { key: 'tel',   label: '📞 電話',  tag: 'tel',   badge: 'badge-teal',   color: 'var(--accent3)' },
+  { key: 'bc',    label: '💬 BC',    tag: 'bc',    badge: 'badge-green',  color: 'var(--success)' },
+  { key: 'ii',    label: '🎙️ II',    tag: 'ii',    badge: 'badge-purple', color: 'var(--accent4)' },
+  { key: 'bm',    label: '🤝 BM',    tag: 'bm',    badge: 'badge-gold',   color: 'var(--accent)'  },
+  { key: 'ppc',   label: '🔍 PPC',   tag: 'ppc',   badge: 'badge-gold',   color: 'var(--warning)' },
+  { key: 'ps',    label: '🚀 PS',    tag: 'ps',    badge: 'badge-teal',   color: 'var(--accent3)' },
+  { key: 'other', label: '📁 其他',  tag: 'other', badge: 'badge-red',    color: 'var(--text-dim)'},
+];
+
+function renderTodos() {
+  TODO_SECTIONS.forEach(s => { if (!state.todos[s.key]) state.todos[s.key] = []; });
+  const order = state.sectionOrder || TODO_SECTIONS.map(s => s.key);
+  const grid = document.getElementById('todo-sections-grid');
+  const vdk = getViewDateKey();
+
+  grid.innerHTML = order.map((key, idx) => {
+    const s = TODO_SECTIONS.find(x => x.key === key);
+    if (!s) return '';
+    const items = state.todos[s.key] || [];
+    const pending = items.filter(t => !t.done && (t.date === vdk || (!t.date && vdk === todayKey()))).length;
+    const visibleItems = items.filter(t => t.date === vdk || (!t.date && vdk === todayKey()));
+    const itemsHTML = visibleItems.length === 0
+      ? `<div class="empty-state" style="padding:18px 0 10px"><div class="empty-icon" style="font-size:22px">✅</div>沒有待辦</div>`
+      : visibleItems.map(t => {
+        const isOverdue = t.time && !t.done && isTimePast(t.date, t.time);
+        return `
+        <div class="todo-item ${t.done ? 'done' : ''}">
+          <div class="todo-check" onclick="toggleTodo('${s.key}',${t.id})">${t.done ? '✓' : ''}</div>
+          <div style="flex:1; min-width:0;">
+            <div class="todo-text">${t.text}</div>
+            ${t.note ? `<div class="todo-meta">${t.note}</div>` : ''}
+          </div>
+          ${t.time ? `<span class="todo-time ${isOverdue?'overdue':''}">⏰ ${t.time}</span>` : ''}
+          <button class="delete-btn" onclick="confirmDeleteTodo('${s.key}',${t.id},this.dataset.txt)" data-txt="${t.text.replace(/"/g,'&quot;').replace(/'/g,'&#39;')}">✕</button>
+        </div>`;
+      }).join('');
+    const isFirst = idx === 0;
+    const isLast  = idx === order.length - 1;
+    return `
+      <div class="todo-section" draggable="true"
+        data-key="${s.key}"
+        ondragstart="sectionDragStart(event,'${s.key}')"
+        ondragover="sectionDragOver(event)"
+        ondragleave="sectionDragLeave(event)"
+        ondrop="sectionDrop(event,'${s.key}')">
+        <div class="todo-section-header">
+          <div class="todo-section-title" style="color:${s.color}">
+            ${s.label}
+            <span class="badge ${s.badge}">${pending}</span>
+          </div>
+          <div class="section-move-btns">
+            <button class="section-move-btn" onclick="moveSectionUp('${s.key}')" ${isFirst?'disabled':''} title="上移">↑</button>
+            <button class="section-move-btn" onclick="moveSectionDown('${s.key}')" ${isLast?'disabled':''} title="下移">↓</button>
+          </div>
+        </div>
+        <div class="todo-list">${itemsHTML}</div>
+        <div class="add-todo-form">
+          <input type="text" id="new-${s.key}-text" placeholder="新增任務..."
+            onkeydown="if(event.key==='Enter') addTodoQuick('${s.key}')" />
+          <input type="time" id="new-${s.key}-time"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 8px;font-size:12px;font-family:'Space Mono',monospace;outline:none;width:88px;cursor:pointer;"
+            onfocus="this.style.borderColor='var(--accent3)'" onblur="this.style.borderColor='var(--border)'" />
+          <button class="btn btn-sm btn-outline" onclick="addTodoQuick('${s.key}')">＋</button>
+        </div>
+      </div>`;
+  }).join('');
+  updateStats();
+  initSectionDnd();
+}
+
+// ── Section reordering ──
+function moveSectionUp(key) {
+  const o = state.sectionOrder;
+  const i = o.indexOf(key);
+  if (i <= 0) return;
+  [o[i-1], o[i]] = [o[i], o[i-1]];
+  save(); renderTodos();
+}
+function moveSectionDown(key) {
+  const o = state.sectionOrder;
+  const i = o.indexOf(key);
+  if (i < 0 || i >= o.length - 1) return;
+  [o[i+1], o[i]] = [o[i], o[i+1]];
+  save(); renderTodos();
+}
+
+// Drag-and-drop
+let _dragKey = null;
+function sectionDragStart(e, key) {
+  _dragKey = key;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => { const el = e.target.closest('.todo-section'); if(el) el.classList.add('dragging'); }, 0);
+}
+function sectionDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const el = e.target.closest('.todo-section');
+  if (el && el.dataset.key !== _dragKey) el.classList.add('drag-over');
+}
+function sectionDragLeave(e) {
+  const el = e.target.closest('.todo-section');
+  if (el) el.classList.remove('drag-over');
+}
+function sectionDrop(e, targetKey) {
+  e.preventDefault();
+  document.querySelectorAll('.todo-section').forEach(el => el.classList.remove('dragging','drag-over'));
+  if (!_dragKey || _dragKey === targetKey) return;
+  const o = state.sectionOrder;
+  const fromIdx = o.indexOf(_dragKey);
+  const toIdx   = o.indexOf(targetKey);
+  if (fromIdx < 0 || toIdx < 0) return;
+  o.splice(fromIdx, 1);
+  o.splice(toIdx, 0, _dragKey);
+  _dragKey = null;
+  save(); renderTodos();
+}
+function initSectionDnd() {
+  document.querySelectorAll('.todo-section').forEach(el => {
+    el.addEventListener('dragend', () => {
+      document.querySelectorAll('.todo-section').forEach(x => x.classList.remove('dragging','drag-over'));
+    });
+  });
+}
+
+function openDoneModal() {
+  const vdk = getViewDateKey();
+  const isToday = vdk === todayKey();
+  const vd = getViewDate();
+  const dateLabel = isToday ? '今天' : `${vd.getMonth()+1}/${vd.getDate()} (週${['日','一','二','三','四','五','六'][vd.getDay()]})`;
+
+  // Collect all done items for the viewed date
+  const doneItems = [];
+  TODO_SECTIONS.forEach(s => {
+    const items = state.todos[s.key] || [];
+    items.forEach(t => {
+      const itemDate = t.date || todayKey();
+      if (t.done && itemDate === vdk) {
+        doneItems.push({ ...t, sectionLabel: s.label, sectionColor: s.color, sectionKey: s.key });
+      }
+    });
+  });
+
+  // Subtitle
+  document.getElementById('done-modal-subtitle').textContent = `${dateLabel} · ${doneItems.length} 件完成`;
+  document.getElementById('done-modal-count').textContent = `共完成 ${doneItems.length} 項任務`;
+
+  const list = document.getElementById('done-modal-list');
+  if (doneItems.length === 0) {
+    list.innerHTML = `<div class="done-empty"><div class="empty-icon">📋</div>${isToday ? '今天還沒有完成的事項' : '這天沒有完成的事項'}</div>`;
+  } else {
+    // Group by section
+    const groups = {};
+    doneItems.forEach(t => {
+      if (!groups[t.sectionKey]) groups[t.sectionKey] = { label: t.sectionLabel, color: t.sectionColor, items: [] };
+      groups[t.sectionKey].items.push(t);
+    });
+
+    list.innerHTML = Object.values(groups).map(g => `
+      <div class="done-group-header" style="color:${g.color}">${g.label}</div>
+      ${g.items.map(t => `
+        <div class="done-item">
+          <div class="done-check-icon">✓</div>
+          <div class="done-item-body">
+            <div class="done-item-text">${t.text}</div>
+            <div class="done-item-meta">
+              <span class="done-section-label" style="background:rgba(52,211,153,.12); color:var(--success);">${t.tag.toUpperCase()}</span>
+              ${t.time ? `<span style="font-family:'Space Mono',monospace; font-size:10px; color:var(--accent3);">⏰ ${t.time}</span>` : ''}
+              ${t.note ? `<span>${t.note}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    `).join('');
+  }
+
+  openModal('modal-done');
+}
+
+function updateStats() {
+  const vdk = getViewDateKey();
+  const tk  = todayKey();
+  // Only count tasks belonging to the currently viewed date
+  const all  = Object.values(state.todos).flat()
+    .filter(t => t.date === vdk || (!t.date && vdk === tk));
+  const done = all.filter(t => t.done);
+  document.getElementById('stat-done').textContent  = done.length;
+  document.getElementById('stat-total').textContent  = all.length;
+  document.getElementById('stat-calls').textContent  = all.filter(t => !t.done && ['tel','bc','bm','ppc'].includes(t.tag)).length;
+  document.getElementById('stat-ps').textContent     = all.filter(t => !t.done && t.tag === 'ps').length;
+  document.getElementById('stat-ii').textContent     = all.filter(t => !t.done && t.tag === 'ii').length;
+}
+
+function toggleTodo(sec, id) {
+  if (!state.todos[sec]) state.todos[sec] = [];
+  const item = state.todos[sec].find(t => t.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  if (item.done) {
+    // Update weekly
+    const dow = new Date().getDay();
+    state.weeklyDone[dow] = (state.weeklyDone[dow] || 0) + 1;
+    addActivity(`完成：${item.text}`, '剛剛', 'var(--success)');
+    save();
+    renderTodos();
+    showReward(item.tag);
+  } else {
+    save();
+    renderTodos();
+  }
+}
+
+function deleteTodo(sec, id) {
+  if (!state.todos[sec]) return;
+  state.todos[sec] = state.todos[sec].filter(t => t.id !== id);
+  save(); renderTodos();
+}
+
+function confirmDeleteTodo(sec, id, text) {
+  const displayText = typeof text === 'string' ? text : (text && text.dataset ? text.dataset.txt : '');
+  document.getElementById('confirm-title').textContent = '確定要刪除這個任務？';
+  document.getElementById('confirm-desc').innerHTML =
+    `<strong style="color:var(--text)">${displayText}</strong>`;
+  const btn = document.getElementById('confirm-execute-btn');
+  btn.onclick = () => { deleteTodo(sec, id); closeModal('modal-confirm-delete'); };
+  openModal('modal-confirm-delete');
+}
+
+function addTodoQuick(sec) {
+  const textEl = document.getElementById(`new-${sec}-text`);
+  const timeEl = document.getElementById(`new-${sec}-time`);
+  const text = textEl.value.trim();
+  if (!text) return;
+  const time = timeEl ? timeEl.value : '';
+  if (!state.todos[sec]) state.todos[sec] = [];
+  state.todos[sec].push({ id: state.nextTodoId++, text, tag: sec, note: '', done: false, date: getSelectedDate(), time });
+  textEl.value = '';
+  if (timeEl) timeEl.value = '';
+  save(); renderTodos();
+}
+
+function openAddTodo() { openModal('modal-todo'); }
+function addTodo() {
+  const text = document.getElementById('todo-text').value.trim();
+  if (!text) return;
+  const tag = document.getElementById('todo-tag').value;
+  const note = document.getElementById('todo-note').value.trim();
+  const time = document.getElementById('todo-time').value || '';
+  if (!state.todos[tag]) state.todos[tag] = [];
+  state.todos[tag].push({ id: state.nextTodoId++, text, tag, note, done: false, date: getSelectedDate(), time });
+  document.getElementById('todo-text').value = '';
+  document.getElementById('todo-note').value = '';
+  document.getElementById('todo-time').value = '';
+  save(); renderTodos(); closeModal('modal-todo');
+}
+
+// ══════════════════════════════════════════════
+// Reward
+// ══════════════════════════════════════════════
+const rewards = {
+  ii: { emoji: '🎙️', title: '面談完成！', sub: '很棒的開始，繼續挖掘優質人選！' },
+  ps: { emoji: '🚀', title: '履歷送出！', sub: '子彈已上膛，等待客戶回音！' },
+  bm: { emoji: '🤝', title: '客戶會議完成！', sub: '關係就是生意，做得好！' },
+  bc: { emoji: '📞', title: '業務電話搞定！', sub: '每通電話都是一個機會！' },
+  ci: { emoji: '🎯', title: '面試安排完成！', sub: '人選踏上了征途，加油！' },
+  ppc: { emoji: '🔍', title: 'PPC 對焦完成！', sub: '方向清晰，接下來全力衝刺！' },
+  other: { emoji: '✅', title: '任務完成！', sub: '每一步都讓你更接近目標！' },
+};
+
+function showReward(tag) {
+  const r = rewards[tag] || rewards.other;
+  const overlay = document.getElementById('reward-overlay');
+  overlay.innerHTML = '';
+  // Confetti
+  const colors = ['#f0b429','#4ecdc4','#a78bfa','#e05c5c','#34d399','#fbbf24'];
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.cssText = `
+      left:${Math.random()*100}%;
+      top:${-10 + Math.random()*20}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-duration:${1.2 + Math.random()*1}s;
+      animation-delay:${Math.random()*.4}s;
+      transform:rotate(${Math.random()*360}deg);
+      width:${6+Math.random()*8}px; height:${6+Math.random()*8}px;
+    `;
+    overlay.appendChild(piece);
+  }
+  // Toast
+  const toast = document.createElement('div');
+  toast.className = 'reward-toast';
+  toast.innerHTML = `<span class="reward-emoji">${r.emoji}</span>
+    <div class="reward-title">${r.title}</div>
+    <div class="reward-sub">${r.sub}</div>`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0'; toast.style.transition = 'opacity .3s';
+    setTimeout(() => { toast.remove(); overlay.innerHTML = ''; }, 350);
+  }, 2000);
+}
+
+// ══════════════════════════════════════════════
+// Dashboard
+// ══════════════════════════════════════════════
+function toggleActivity() {
+  const body = document.getElementById('activity-body');
+  const chevron = document.getElementById('activity-chevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+function renderDashboard() {
+  const list = document.getElementById('jobs-list');
+  list.classList.toggle('list-mode', _jobView === 'list');
+
+  if (state.jobs.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📁</div>還沒有案子，點右上角新增！</div>`;
+  } else if (_jobView === 'list') {
+    // ── Compact list mode ──
+    const stages = ['target','ii','ps','ci','offer'];
+    const stageLabels = { target:'T', ii:'II', ps:'PS', ci:'CI', offer:'$' };
+    const pipeColors = { target:'var(--text-dim)', ii:'var(--accent4)', ps:'var(--accent3)', ci:'var(--accent2)', offer:'var(--accent)' };
+    const statusText = { active:'進行中', warm:'追蹤中', cold:'暫緩' };
+    list.innerHTML = state.jobs.map((job, idx) => {
+      const counts = {};
+      stages.forEach(s => counts[s] = job.candidates.filter(c => c.stage === s).length);
+      const pipeHTML = stages.map(s => `
+        <span class="jl-stage ${counts[s]>0?'has-cands':'no-cands'}" style="${counts[s]>0?'color:'+pipeColors[s]:''}">
+          ${stageLabels[s]}${counts[s]>0?'·'+counts[s]:''}
+        </span>`).join('');
+      const isFirst = idx === 0, isLast = idx === state.jobs.length - 1;
+      return `
+        <div class="job-list-row" draggable="true"
+          data-job-id="${job.id}"
+          ondragstart="jobDragStart(event,${job.id})"
+          ondragover="jobDragOver(event)"
+          ondragleave="jobDragLeave(event)"
+          ondrop="jobDrop(event,${job.id})"
+          ondragend="jobDragEnd(event)"
+          onclick="openJobDetail(${job.id})">
+          <span class="jl-drag" onclick="event.stopPropagation()">⠿</span>
+          <div class="jl-move-btns" onclick="event.stopPropagation()">
+            <button class="jl-move-btn" onclick="moveJobUp(${job.id})" ${isFirst?'disabled':''}>↑</button>
+            <button class="jl-move-btn" onclick="moveJobDown(${job.id})" ${isLast?'disabled':''}>↓</button>
+          </div>
+          <span class="jl-title">${job.title}</span>
+          <span class="jl-company">${job.company}</span>
+          <span class="job-status-badge status-${job.status}" style="font-size:9px; padding:2px 7px;">${statusText[job.status]}</span>
+          <div class="jl-pipeline">${pipeHTML}</div>
+          <button class="jl-delete" onclick="event.stopPropagation(); confirmDeleteJob(${job.id},'${job.title.replace(/'/g,"\'")}','${job.company.replace(/'/g,"\'")}')">✕</button>
+        </div>`;
+    }).join('');
+    return; // skip card rendering below
+  } else {
+    list.innerHTML = state.jobs.map(job => {
+      const stages = ['target','ii','ps','ci','offer'];
+      const stageLabels = { target:'Target', ii:'II', ps:'PS', ci:'CI', offer:'Offer' };
+      const statusText = { active:'進行中', warm:'追蹤中', cold:'暫緩' };
+      const counts = {};
+      stages.forEach(s => counts[s] = job.candidates.filter(c => c.stage === s || (s === 'offer' && c.stage === 'offer')).length);
+      const total = job.candidates.length || 1;
+      const pipeColors = { target:'var(--text-dim)', ii:'var(--accent4)', ps:'var(--accent3)', ci:'var(--accent2)', offer:'var(--accent)' };
+      const pipelineHTML = stages.map(s => {
+        const hasCands = counts[s] > 0;
+        return `
+        <div class="pipe-step${hasCands?' has-candidates':''}" style="--pipe-color:${pipeColors[s]}">
+          <div class="pipe-label">${stageLabels[s]}</div>
+          <div class="pipe-dot"></div>
+          <div class="pipe-count">${counts[s] > 0 ? counts[s] : '–'}</div>
+        </div>`;
+      }).join('');
+      const recentCands = job.candidates.slice(-3);
+      return `
+        <div class="job-card" draggable="true"
+          data-job-id="${job.id}"
+          ondragstart="jobDragStart(event,${job.id})"
+          ondragover="jobDragOver(event)"
+          ondragleave="jobDragLeave(event)"
+          ondrop="jobDrop(event,${job.id})"
+          ondragend="jobDragEnd(event)">
+          <div class="job-card-header" onclick="openJobDetail(${job.id})">
+            <div style="display:flex; align-items:flex-start; gap:8px;">
+              <span class="job-drag-handle" onclick="event.stopPropagation()">⠿</span>
+              <div>
+                <div class="job-title">${job.title}</div>
+                <div class="job-company">${job.company} ${job.salary ? '· '+job.salary : ''}</div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="job-status-badge status-${job.status}">${statusText[job.status]}</span>
+              <div class="job-move-btns" onclick="event.stopPropagation()">
+                <button class="job-move-btn" onclick="moveJobUp(${job.id})" ${state.jobs.indexOf(job)===0?'disabled':''} title="上移">↑</button>
+                <button class="job-move-btn" onclick="moveJobDown(${job.id})" ${state.jobs.indexOf(job)===state.jobs.length-1?'disabled':''} title="下移">↓</button>
+              </div>
+              <button class="job-delete-btn" onclick="event.stopPropagation(); confirmDeleteJob(${job.id}, '${job.title.replace(/'/g,"\'")}', '${job.company.replace(/'/g,"\'")}')">✕</button>
+            </div>
+          </div>
+          <div class="job-body">
+            <div class="pipeline">${pipelineHTML}</div>
+            <div class="candidates-mini">
+              ${recentCands.map((c, ci) => {
+                const candIdx = job.candidates.findIndex(x => x.id === c.id);
+                return `
+                <div class="candidate-row" onclick="event.stopPropagation()">
+                  <div class="candidate-name">${escHtml(c.name)}</div>
+                  <span class="candidate-stage stage-${c.stage}">${stageLabel(c.stage)}</span>
+                  <div class="cand-note-edit"
+                    contenteditable="true"
+                    data-placeholder="備註..."
+                    data-job="${job.id}"
+                    data-idx="${candIdx}"
+                    onblur="saveCardCandNote(this)"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                    onfocus="this.style.borderColor='var(--accent3)'"
+                  >${escHtml(c.note || '')}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } // end card mode
+
+  const actList = document.getElementById('activity-list');
+  const countEl = document.getElementById('activity-count');
+  if (countEl) countEl.textContent = state.activities.length;
+  if (state.activities.length === 0) {
+    actList.innerHTML = `<div class="empty-state">還沒有活動記錄</div>`;
+  } else {
+    actList.innerHTML = state.activities.slice(-8).reverse().map(a => `
+      <div class="activity-item">
+        <div class="activity-dot" style="background:${a.color}"></div>
+        <div class="activity-content">
+          <div class="activity-title">${a.text}</div>
+          <div class="activity-time">${a.time}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// ── Job card drag-and-drop ──
+let _dragJobId = null;
+let _jobView = 'card'; // 'card' | 'list'
+
+function setJobView(mode) {
+  _jobView = mode;
+  document.getElementById('view-btn-card').classList.toggle('active', mode === 'card');
+  document.getElementById('view-btn-list').classList.toggle('active', mode === 'list');
+  renderDashboard();
+}
+
+function moveJobUp(id) {
+  const i = state.jobs.findIndex(j => j.id === id);
+  if (i <= 0) return;
+  [state.jobs[i-1], state.jobs[i]] = [state.jobs[i], state.jobs[i-1]];
+  save(); renderDashboard();
+}
+function moveJobDown(id) {
+  const i = state.jobs.findIndex(j => j.id === id);
+  if (i < 0 || i >= state.jobs.length - 1) return;
+  [state.jobs[i+1], state.jobs[i]] = [state.jobs[i], state.jobs[i+1]];
+  save(); renderDashboard();
+}
+
+function jobDragStart(e, id) {
+  _dragJobId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = e.target.closest('.job-card');
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+function jobDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const el = e.target.closest('.job-card');
+  if (el && parseInt(el.dataset.jobId) !== _dragJobId) el.classList.add('drag-over');
+}
+function jobDragLeave(e) {
+  const el = e.target.closest('.job-card');
+  if (el) el.classList.remove('drag-over');
+}
+function jobDragEnd(e) {
+  document.querySelectorAll('.job-card').forEach(el => el.classList.remove('dragging','drag-over'));
+}
+function jobDrop(e, targetId) {
+  e.preventDefault();
+  document.querySelectorAll('.job-card').forEach(el => el.classList.remove('dragging','drag-over'));
+  if (!_dragJobId || _dragJobId === targetId) return;
+  const fromIdx = state.jobs.findIndex(j => j.id === _dragJobId);
+  const toIdx   = state.jobs.findIndex(j => j.id === targetId);
+  if (fromIdx < 0 || toIdx < 0) return;
+  const [moved] = state.jobs.splice(fromIdx, 1);
+  state.jobs.splice(toIdx, 0, moved);
+  _dragJobId = null;
+  save(); renderDashboard();
+}
+
+function stageLabel(s) {
+  const m = { target:'Target', ii:'II', ps:'PS', ci:'CI', offer:'Offer', ng:'NG' };
+  return m[s] || s;
+}
+
+function addActivity(text, time, color) {
+  state.activities.push({ text, time, color });
+  if (state.activities.length > 20) state.activities.shift();
+  save();
+}
+
+// ── Add Job ──
+function openAddJob() { openModal('modal-job'); }
+function addJob() {
+  const title = document.getElementById('job-title').value.trim();
+  const company = document.getElementById('job-company').value.trim();
+  if (!title || !company) return;
+  const job = {
+    id: state.nextJobId++,
+    title, company,
+    status: document.getElementById('job-status').value,
+    salary: document.getElementById('job-salary').value.trim(),
+    note: document.getElementById('job-note').value.trim(),
+    candidates: []
+  };
+  state.jobs.push(job);
+  addActivity(`新增案子：${company} ${title}`, '剛剛', 'var(--accent)');
+  save(); renderDashboard(); closeModal('modal-job');
+  ['job-title','job-company','job-salary','job-note'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── Job Detail ──
+let currentJobId = null;
+function openJobDetail(id) {
+  currentJobId = id;
+  const job = state.jobs.find(j => j.id === id);
+  document.getElementById('detail-title').innerText  = job.title || '';
+  document.getElementById('detail-company').innerText = job.company || '';
+  document.getElementById('detail-salary').innerText  = job.salary || '';
+  const statusEl = document.getElementById('detail-status');
+  if (statusEl) statusEl.value = job.status || 'active';
+  const noteEl = document.getElementById('detail-note');
+  noteEl.innerText = job.note || '';
+  noteEl.style.color = job.note ? 'var(--text-dim)' : 'var(--text-muted)';
+  renderDetailCandidates(job);
+  renderDetailPipeline(job);
+  openModal('modal-job-detail');
+}
+
+function saveJobNote(el) {
+  const job = state.jobs.find(j => j.id === currentJobId);
+  if (!job) return;
+  const val = el.innerText.trim();
+  job.note = val;
+  el.style.color = val ? 'var(--text-dim)' : 'var(--text-muted)';
+  save(); renderDashboard();
+}
+
+function saveCardCandNote(el) {
+  const jobId  = parseInt(el.dataset.job);
+  const idx    = parseInt(el.dataset.idx);
+  const job    = state.jobs.find(j => j.id === jobId);
+  if (!job || !job.candidates[idx]) return;
+  job.candidates[idx].note = el.innerText.trim();
+  el.style.borderColor = 'transparent';
+  el.style.background  = 'transparent';
+  save();
+}
+
+function saveJobField(field, el) {
+  const job = state.jobs.find(j => j.id === currentJobId);
+  if (!job) return;
+  const val = el.tagName === 'SELECT' ? el.value : el.innerText.trim();
+  if (val !== undefined) job[field] = val;
+  save(); renderDashboard();
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function saveCandNote(idx, el) {
+  const job = state.jobs.find(j => j.id === currentJobId);
+  if (!job) return;
+  job.candidates[idx].note = el.innerText.trim();
+  save();
+}
+
+function renderDetailCandidates(job) {
+  const el = document.getElementById('detail-candidates');
+  if (job.candidates.length === 0) {
+    el.innerHTML = `<div class="empty-state" style="padding:16px 0"><div class="empty-icon">👥</div>還沒有人選，從下方加入</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="max-height:260px; overflow-y:auto; padding:0 2px;">` +
+    job.candidates.map((c,i) => `
+      <div class="candidate-row">
+        <div class="candidate-name">${escHtml(c.name)}</div>
+        <div
+          class="cand-note-edit"
+          contenteditable="true"
+          data-placeholder="新增備註..."
+          onblur="saveCandNote(${i}, this)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+        >${escHtml(c.note || '')}</div>
+        <select class="candidate-stage stage-${c.stage}" onchange="updateCandStage(${i}, this.value)" style="font-size:11px; padding:3px 8px; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:4px; outline:none; cursor:pointer; flex-shrink:0;">
+          ${['target','ii','ps','ci','offer','ng'].map(s => `<option value="${s}" ${c.stage===s?'selected':''}>${stageLabel(s)}</option>`).join('')}
+        </select>
+        <button onclick="deleteCand(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0;transition:color .15s;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'" title="刪除">✕</button>
+      </div>
+    `).join('') + `</div>`;
+}
+
+function renderDetailPipeline(job) {
+  const stages = [
+    {key:'target', label:'Target', color:'var(--text-muted)'},
+    {key:'ii', label:'II', color:'var(--accent4)'},
+    {key:'ps', label:'PS', color:'var(--accent3)'},
+    {key:'ci', label:'CI', color:'var(--accent2)'},
+    {key:'offer', label:'Offer', color:'var(--accent)'},
+      ];
+  const el = document.getElementById('detail-pipeline');
+  el.innerHTML = stages.map(s => {
+    const count = job.candidates.filter(c => c.stage === s.key).length;
+    const pct = job.candidates.length ? Math.round(count / job.candidates.length * 100) : 0;
+    return `
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+        <div style="width:70px; font-size:12px; color:var(--text-dim); text-align:right;">${s.label}</div>
+        <div style="flex:1; height:10px; background:var(--surface3); border-radius:5px; overflow:hidden;">
+          <div style="width:${Math.max(pct,count?5:0)}%; height:100%; background:${s.color}; border-radius:5px; transition:width .4s;"></div>
+        </div>
+        <div style="font-family:'Space Mono',monospace; font-size:13px; font-weight:700; color:${s.color}; width:20px;">${count}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateCandStage(idx, newStage) {
+  const job = state.jobs.find(j => j.id === currentJobId);
+  if (!job) return;
+  job.candidates[idx].stage = newStage;
+  addActivity(`${job.candidates[idx].name} → ${stageLabel(newStage)}（${job.title}）`, '剛剛', 'var(--accent3)');
+  save(); renderDetailCandidates(job); renderDetailPipeline(job);
+}
+
+function deleteCand(idx) {
+  const job = state.jobs.find(j => j.id === currentJobId);
+  if (!job) return;
+  job.candidates.splice(idx, 1);
+  save(); renderDetailCandidates(job); renderDetailPipeline(job);
+}
+
+function addCandidate() {
+  const name = document.getElementById('cand-name').value.trim();
+  if (!name) return;
+  const job = state.jobs.find(j => j.id === currentJobId);
+  if (!job) return;
+  job.candidates.push({
+    id: Date.now(),
+    name,
+    stage: document.getElementById('cand-stage').value,
+    note: document.getElementById('cand-note').value.trim()
+  });
+  document.getElementById('cand-name').value = '';
+  document.getElementById('cand-note').value = '';
+  addActivity(`加入人選：${name}（${job.title}）`, '剛剛', 'var(--accent4)');
+  save(); renderDetailCandidates(job); renderDetailPipeline(job);
+}
+
+let jobToDeleteId = null;
+
+function confirmDeleteJob(id, title, company) {
+  jobToDeleteId = id;
+  document.getElementById('confirm-title').textContent = '確定要刪除這個案子？';
+  document.getElementById('confirm-desc').innerHTML =
+    `<strong style="color:var(--text)">${title}</strong><br>${company}<br><span style="font-size:12px; color:var(--danger); margin-top:6px; display:block;">此操作無法還原，包含所有人選資料。</span>`;
+  const btn = document.getElementById('confirm-execute-btn');
+  btn.onclick = executeDeleteJob;
+  openModal('modal-confirm-delete');
+}
+
+function executeDeleteJob() {
+  if (jobToDeleteId === null) return;
+  const job = state.jobs.find(j => j.id === jobToDeleteId);
+  if (job) addActivity(`刪除案子：${job.company} ${job.title}`, '剛剛', 'var(--danger)');
+  state.jobs = state.jobs.filter(j => j.id !== jobToDeleteId);
+  jobToDeleteId = null;
+  save();
+  closeModal('modal-confirm-delete');
+  closeModal('modal-job-detail');
+  renderDashboard();
+}
+
+function deleteCurrentJob() {
+  confirmDeleteJob(currentJobId,
+    (state.jobs.find(j => j.id === currentJobId) || {}).title || '',
+    (state.jobs.find(j => j.id === currentJobId) || {}).company || ''
+  );
+}
+
+// ══════════════════════════════════════════════
+// Stats
+// ══════════════════════════════════════════════
+function renderStats() {
+  const all = Object.values(state.todos).flat();
+  const done = all.filter(t => t.done);
+  document.getElementById('w-ii').textContent = done.filter(t => t.tag === 'ii').length;
+  document.getElementById('w-ps').textContent = done.filter(t => t.tag === 'ps').length;
+  document.getElementById('w-bm').textContent = done.filter(t => ['bm','bc'].includes(t.tag)).length;
+  document.getElementById('w-ci').textContent = done.filter(t => t.tag === 'ci').length;
+  document.getElementById('w-rate').textContent = all.length ? Math.round(done.length/all.length*100)+'%' : '0%';
+  document.getElementById('w-jobs').textContent = state.jobs.filter(j => j.status === 'active').length;
+
+  // Weekly bar chart
+  const dayLabels = ['日','一','二','三','四','五','六'];
+  const maxVal = Math.max(...state.weeklyDone, 1);
+  const chart = document.getElementById('weekly-chart');
+  const labels = document.getElementById('weekly-labels');
+  const today = new Date().getDay();
+  chart.innerHTML = state.weeklyDone.map((v, i) => `
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;">
+      <div style="font-family:'Space Mono',monospace; font-size:11px; color:var(--accent); opacity:${v?1:0}">${v}</div>
+      <div style="width:100%; height:${Math.round(v/maxVal*90)}px; background:${i===today?'var(--accent)':'var(--surface3)'}; border-radius:4px 4px 0 0; min-height:4px; transition: height .4s;"></div>
+    </div>
+  `).join('');
+  labels.innerHTML = dayLabels.map((l,i) => `
+    <div style="flex:1; text-align:center; font-size:11px; color:${i===today?'var(--accent)':'var(--text-muted)'}; font-weight:${i===today?700:400};">${l}</div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════════
+// Modals
+// ══════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+function switchTab(btn, targetId) {
+  const modal = btn.closest('.modal');
+  modal.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  modal.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(targetId).classList.add('active');
+}
+
+// Enter key shortcuts
+// Enter key shortcuts (todo section inputs are dynamic, handled inline via onkeydown)
+document.getElementById('todo-text').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+document.getElementById('cand-name').addEventListener('keydown', e => { if (e.key === 'Enter') addCandidate(); });
+
+// ══════════════════════════════════════════════
+// Export / Import
+// ══════════════════════════════════════════════
+function exportData() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const filename = `headhunter-backup-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}.json`;
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  showToast('💾 備份已下載！', filename);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!parsed.todos || !parsed.jobs) throw new Error('格式不正確');
+      if (!confirm('確定要匯入「' + file.name + '」？目前的所有資料將會被覆蓋，此操作無法還原。')) {
+        e.target.value = ''; return;
+      }
+      state = parsed;
+      save();
+      migrateState();
+      updateDateDisplay();
+      calInit();
+      renderTodos();
+      showToast('📂 匯入成功！', file.name);
+    } catch(err) {
+      alert('匯入失敗：' + err.message + '，請確認是正確的備份檔案。');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function showToast(title, sub) {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+    background:var(--surface); border:1px solid var(--accent3);
+    border-radius:12px; padding:14px 22px; z-index:9999;
+    box-shadow:0 4px 24px rgba(0,0,0,.4);
+    font-family:'Noto Sans TC',sans-serif; text-align:center;
+    animation:toastSlideUp .3s cubic-bezier(.34,1.56,.64,1);
+  `;
+  toast.innerHTML = `<div style="font-size:14px;font-weight:700;color:var(--accent3)">${title}</div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${sub}</div>`;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0'; toast.style.transition = 'opacity .3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ══════════════════════════════════════════════
+// Init
+// ══════════════════════════════════════════════
+// updateDateDisplay() already called above during date-nav init
+calInit();
+renderTodos();
+</script>
+</body>
+</html>
