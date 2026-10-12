@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>履歷篩選推薦</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14; --surface: #151820; --surface2: #1c2030; --border: #252a3a;
+    --text: #e8eaf0; --text-dim: #8891aa; --text-muted: #5a6178;
+    --accent: #f0b429; --teal: #4ecdc4; --purple: #a78bfa;
+    --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+    --radius: 12px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f0f2f7; --surface: #fff; --surface2: #f5f7fb; --border: #dde0eb;
+      --text: #1a1f2e; --text-dim: #4a5068; --text-muted: #9099b5; --accent: #c98a00;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+  .logo { font-family: 'Space Mono', monospace; color: var(--accent); letter-spacing: 2px; font-size: 14px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav button { background: none; border: none; color: var(--text-dim); padding: 8px 14px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 14px; }
+  nav button.active { color: var(--accent); background: rgba(240,180,41,.1); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  .page { display: none; } .page.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  h2 { font-size: 18px; margin-bottom: 12px; } h3 { font-size: 15px; margin: 14px 0 6px; color: var(--text-dim); }
+  label { display: block; font-size: 13px; color: var(--text-dim); margin: 12px 0 6px; }
+  textarea, input, select { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; }
+  textarea { resize: vertical; }
+  textarea:focus, input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .btn { background: var(--accent); color: #111; border: none; padding: 10px 20px; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .btn.ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); font-weight: 500; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+  .muted { color: var(--text-dim); font-size: 13px; }
+  .notice { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin: 10px 0; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3); }
+  .notice.err { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.35); }
+  .progress { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+  .progress div { height: 100%; background: var(--accent); transition: width .3s; }
+  .list { padding-left: 22px; } .list li { margin: 3px 0; }
+  a.btn { text-decoration: none; display: inline-block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: var(--surface2); border: 1px solid var(--border); }
+  .chip.must { border-color: var(--accent); color: var(--accent); }
+
+  .cand { padding: 0; overflow: hidden; }
+  .cand-head { display: flex; gap: 16px; padding: 18px 20px; cursor: pointer; align-items: center; }
+  .score { flex-shrink: 0; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-family: 'Space Mono', monospace; font-size: 20px; border: 3px solid; }
+  .rank { font-family: 'Space Mono', monospace; color: var(--text-muted); font-size: 13px; }
+  .cand-title { font-size: 17px; font-weight: 700; }
+  .badge { font-size: 12px; padding: 2px 10px; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+  .lv-強烈推薦 { color: var(--success); border-color: var(--success); } .badge.lv-強烈推薦 { background: rgba(52,211,153,.15); }
+  .lv-推薦 { color: var(--teal); border-color: var(--teal); } .badge.lv-推薦 { background: rgba(78,205,196,.15); }
+  .lv-可考慮 { color: var(--warning); border-color: var(--warning); } .badge.lv-可考慮 { background: rgba(251,191,36,.15); }
+  .lv-不推薦 { color: var(--danger); border-color: var(--danger); } .badge.lv-不推薦 { background: rgba(248,113,113,.15); }
+  .cand-body { display: none; padding: 0 20px 20px; border-top: 1px solid var(--border); }
+  .cand.open .cand-body { display: block; }
+  .dim { display: grid; grid-template-columns: 140px 1fr 40px; gap: 10px; align-items: center; font-size: 13px; margin: 4px 0; }
+  .bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; } .bar div { height: 100%; background: var(--teal); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 500; }
+  .st-符合 { color: var(--success); } .st-部分符合 { color: var(--warning); } .st-不符合 { color: var(--danger); } .st-無法判斷 { color: var(--text-muted); }
+  .risk { padding: 8px 12px; border-left: 3px solid; margin: 6px 0; background: var(--surface2); border-radius: 0 8px 8px 0; font-size: 14px; }
+  .sev-高 { border-color: var(--danger); } .sev-中 { border-color: var(--warning); } .sev-低 { border-color: var(--text-muted); }
+  .q { padding: 8px 12px; background: var(--surface2); border-radius: 8px; margin: 6px 0; font-size: 14px; }
+  .q small { display: block; color: var(--text-dim); }
+  .src { font-size: 12px; color: var(--text-muted); word-break: break-all; margin-top: 12px; }
+  .hist { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; gap: 12px; }
+  .hist:hover { color: var(--accent); }
+  @media (max-width: 600px) { .dim { grid-template-columns: 90px 1fr 32px; } .cand-head { gap: 10px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">TALENT MATCH</div>
+  <nav>
+    <button data-page="new" class="active">新篩選</button>
+    <button data-page="history">歷史紀錄</button>
+    <button data-page="library">人才庫</button>
+    <button data-page="settings">設定</button>
+  </nav>
+</header>
+<main>
+  <!-- 新篩選 -->
+  <section id="page-new" class="page active">
+    <div id="keyWarn"></div>
+    <div class="card">
+      <h2>貼上職缺資訊</h2>
+      <label>職缺 JD（職稱、工作內容、條件需求）</label>
+      <textarea id="jd" rows="12" placeholder="直接貼上客戶給的 JD…"></textarea>
+      <label>補充資訊（選填）：薪資範圍、地點、客戶偏好、必要／排除條件、團隊狀況…</label>
+      <textarea id="extra" rows="4" placeholder="例：年薪 180–220 萬、內湖、希望有外商經驗、不考慮頻繁跳槽者、主管是美國人需英文流利"></textarea>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="startBtn">開始推薦人選</button>
+        <span class="muted" id="libInfo"></span>
+      </div>
+    </div>
+    <div id="runView"></div>
+  </section>
+
+  <section id="page-history" class="page"><div class="card"><h2>歷史紀錄</h2><div id="histList" class="muted">載入中…</div></div></section>
+
+  <section id="page-library" class="page">
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2>人才庫</h2><button class="btn ghost" id="scanBtn">重新掃描</button></div>
+      <div id="libView" class="muted">按「重新掃描」讀取資料夾與 Google Sheet。</div>
+    </div>
+  </section>
+
+  <section id="page-settings" class="page">
+    <div class="card">
+      <h2>資料來源</h2>
+      <label>履歷資料夾（一行一個，會包含子資料夾；支援 PDF、Word、PPT）</label>
+      <textarea id="cfgFolders" rows="4" placeholder="C:\Users\你的名字\Documents\履歷&#10;/Users/你的名字/Dropbox/人才庫"></textarea>
+      <label>Google Sheet（一行一個，格式：名稱 | 網址）</label>
+      <textarea id="cfgSheets" rows="3" placeholder="人才庫總表 | https://docs.google.com/spreadsheets/d/xxxx/edit#gid=0"></textarea>
+      <p class="muted">Sheet 共用設定為「知道連結的任何人都能檢視」即可讀取；第一列需為欄位名稱，每一列為一位人選。</p>
+      <label>私人 Sheet 用的服務帳戶金鑰檔路徑（選填）</label>
+      <input id="cfgSA" placeholder="C:\keys\service-account.json">
+    </div>
+    <div class="card">
+      <h2>AI 評估</h2>
+      <div class="grid2">
+        <div><label>模型</label><input id="cfgModel"></div>
+        <div><label>評估深度</label>
+          <select id="cfgEffort"><option value="medium">medium（較快、較省）</option><option value="high">high（建議）</option><option value="xhigh">xhigh（更仔細）</option><option value="max">max（最仔細、最慢）</option></select></div>
+        <div><label>每次深度評估人數上限</label><input id="cfgShort" type="number" min="1" max="200"></div>
+        <div><label>同時評估人數</label><input id="cfgWorkers" type="number" min="1" max="16"></div>
+      </div>
+    </div>
+    <button class="btn" id="saveCfg">儲存設定</button> <span id="cfgMsg" class="muted"></span>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api = async (url, opt = {}) => {
+  const r = await fetch(url, {headers: {'Content-Type': 'application/json'}, ...opt});
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+};
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showPage(b.dataset.page));
+function showPage(p) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  document.querySelectorAll('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
+  if (p === 'history') loadHistory();
+}
+
+// ── 設定 ──
+async function loadConfig() {
+  const c = await api('/api/config');
+  $('#cfgFolders').value = c.resume_folders.join('\n');
+  $('#cfgSheets').value = c.google_sheets.map(s => `${s.name} | ${s.url}`).join('\n');
+  $('#cfgSA').value = c.google_service_account_file;
+  $('#cfgModel').value = c.model;
+  $('#cfgEffort').value = c.effort;
+  $('#cfgShort').value = c.shortlist_size;
+  $('#cfgWorkers').value = c.max_workers;
+  $('#keyWarn').innerHTML = c.api_key_set ? '' :
+    '<div class="notice err">尚未設定 ANTHROPIC_API_KEY 環境變數，AI 評估將無法執行。請參考 README 設定後重新啟動。</div>';
+  const n = c.resume_folders.length + c.google_sheets.length;
+  $('#libInfo').textContent = n ? `資料來源：${c.resume_folders.length} 個資料夾、${c.google_sheets.length} 個 Google Sheet` : '尚未設定資料來源，請先到「設定」';
+}
+$('#saveCfg').onclick = async () => {
+  const sheets = $('#cfgSheets').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const i = l.lastIndexOf('|');
+    return i > 0 ? {name: l.slice(0, i).trim(), url: l.slice(i + 1).trim()} : {name: 'Google Sheet', url: l};
+  });
+  await api('/api/config', {method: 'POST', body: JSON.stringify({
+    resume_folders: $('#cfgFolders').value.split('\n').map(s => s.trim()).filter(Boolean),
+    google_sheets: sheets,
+    google_service_account_file: $('#cfgSA').value.trim(),
+    model: $('#cfgModel').value.trim() || 'claude-opus-5-5',
+    effort: $('#cfgEffort').value,
+    shortlist_size: +$('#cfgShort').value || 20,
+    max_workers: +$('#cfgWorkers').value || 4,
+  })});
+  $('#cfgMsg').textContent = '已儲存';
+  setTimeout(() => $('#cfgMsg').textContent = '', 2000);
+  loadConfig();
+};
+
+// ── 人才庫 ──
+$('#scanBtn').onclick = async () => {
+  $('#scanBtn').disabled = true;
+  $('#libView').textContent = '掃描中…（第一次會比較久，之後只會讀取新增或修改的檔案）';
+  try {
+    const d = await api('/api/library');
+    $('#libView').innerHTML = `<p>共 <b>${d.count}</b> 位人選</p>` +
+      (d.warnings.length ? `<div class="notice">${d.warnings.map(esc).join('<br>')}</div>` : '') +
+      `<table><tr><th>姓名</th><th>來源</th><th>字數</th></tr>${d.candidates.map(c =>
+        `<tr><td>${esc(c.name)}</td><td class="muted">${esc(c.source)}</td><td>${c.scanned ? '掃描檔（AI 直接讀 PDF）' : c.chars}</td></tr>`).join('')}</table>`;
+  } catch (e) { $('#libView').innerHTML = `<div class="notice err">${esc(e.message)}</div>`; }
+  $('#scanBtn').disabled = false;
+};
+
+// ── 篩選 ──
+let pollTimer = null;
+$('#startBtn').onclick = async () => {
+  $('#startBtn').disabled = true;
+  try {
+    const {id} = await api('/api/runs', {method: 'POST', body: JSON.stringify({jd: $('#jd').value, extra: $('#extra').value})});
+    poll(id);
+  } catch (e) {
+    $('#runView').innerHTML = `<div class="notice err">${esc(e.message)}</div>`;
+    $('#startBtn').disabled = false;
+  }
+};
+async function poll(id) {
+  clearTimeout(pollTimer);
+  const d = await api('/api/runs/' + id);
+  renderRun(d);
+  if (d.status === 'running') pollTimer = setTimeout(() => poll(id), 2000);
+  else $('#startBtn').disabled = false;
+}
+
+function renderRun(d) {
+  const a = d.analysis, s = d.summary;
+  const [done, total] = d.progress;
+  let h = '';
+  if (d.status === 'running') {
+    h += `<div class="card"><b>${esc(d.stage)}</b> ${total ? `（${done}/${total}）` : ''}
+      <div class="progress"><div style="width:${total ? done / total * 100 : 5}%"></div></div>
+      <p class="muted" style="margin-top:8px">人才庫 ${d.library_size || '–'} 人；評估完成的人選會陸續顯示在下方。</p></div>`;
+  }
+  if (d.error) h += `<div class="notice err">發生錯誤：${esc(d.error)}</div>`;
+  if (d.warnings.length) h += `<details class="notice"><summary>有 ${d.warnings.length} 個檔案／來源無法讀取</summary>${d.warnings.map(esc).join('<br>')}</details>`;
+
+  if (a) {
+    h += `<div class="card"><h2>職缺分析：${esc(a.job_title)} ${a.company ? '｜' + esc(a.company) : ''}</h2>
+      <p>${esc(a.summary)}</p>
+      <div class="grid2">
+        <div><h3>必要條件</h3><ul class="list">${a.must_haves.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div><h3>加分條件</h3><ul class="list">${a.nice_to_haves.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+      </div>
+      ${a.deal_breakers.length ? `<h3>排除條件</h3><ul class="list">${a.deal_breakers.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      ${a.unclear_points.length ? `<h3>建議先向客戶確認</h3><ul class="list">${a.unclear_points.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      <h3>搜尋關鍵字</h3><div class="chips">${a.keywords.map(k => `<span class="chip ${k.must_have ? 'must' : ''}" title="${esc(k.synonyms.join('、'))}">${esc(k.term)}</span>`).join('')}</div>
+    </div>`;
+  }
+  if (s) {
+    h += `<div class="card" style="border-color:var(--accent)"><div class="row" style="justify-content:space-between">
+        <h2>推薦總結</h2>
+        <div class="row"><a class="btn ghost" href="/api/runs/${d.id}/export.csv">匯出 Excel (CSV)</a><a class="btn ghost" href="/api/runs/${d.id}/export.md">匯出報告 (Markdown)</a></div></div>
+      <p>${esc(s.overview)}</p>
+      <h3>優先聯絡</h3><ol class="list">${s.top_picks.map(p => `<li><b>${esc(p.candidate_name)}</b>：${esc(p.why_this_rank)}</li>`).join('')}</ol>
+      ${s.comparison_notes.length ? `<h3>比較與取捨</h3><ul class="list">${s.comparison_notes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+      <h3>人才庫缺口與搜尋建議</h3><p>${esc(s.talent_pool_gaps)}</p>
+      <h3>下一步</h3><ul class="list">${s.next_steps.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  }
+  if (d.results.length) h += `<h2 style="margin:24px 0 12px">人選排名（${d.results.length} 位）</h2>` + d.results.map((r, i) => candCard(r, i + 1)).join('');
+  if (d.failed.length) h += `<div class="notice err">${d.failed.length} 位評估失敗：${d.failed.map(f => esc(f.name + '：' + f.error)).join('<br>')}</div>`;
+
+  const open = [...document.querySelectorAll('.cand.open')].map(el => el.dataset.id);
+  $('#runView').innerHTML = h;
+  open.forEach(id => document.querySelector(`.cand[data-id="${CSS.escape(id)}"]`)?.classList.add('open'));
+}
+
+function candCard(r, rank) {
+  const e = r.evaluation;
+  return `<div class="card cand" data-id="${esc(r.id)}">
+    <div class="cand-head" onclick="this.parentElement.classList.toggle('open')">
+      <div class="score lv-${e.fit_level}">${e.score}</div>
+      <div style="flex:1;min-width:0">
+        <div class="row" style="gap:8px"><span class="rank">#${rank}</span><span class="cand-title">${esc(e.candidate_name)}</span><span class="badge lv-${e.fit_level}">${e.fit_level}</span></div>
+        <div class="muted">${esc(e.current_title)} @ ${esc(e.current_company)}｜${esc(e.years_experience)}</div>
+        <div style="margin-top:4px">${esc(e.one_line_summary)}</div>
+      </div>
+    </div>
+    <div class="cand-body">
+      <div class="grid2">
+        <div><h3>推薦原因</h3><ul class="list">${e.recommendation_reasons.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div><h3>落差</h3><ul class="list">${e.gaps.map(x => `<li>${esc(x)}</li>`).join('') || '<li>無明顯落差</li>'}</ul></div>
+      </div>
+      <h3>評分維度</h3>
+      ${e.dimension_scores.map(x => `<div class="dim"><span>${esc(x.dimension)}</span><div class="bar"><div style="width:${x.score}%"></div></div><b>${x.score}</b></div><div class="muted" style="margin:0 0 6px">${esc(x.comment)}</div>`).join('')}
+      <h3>必要條件檢核</h3>
+      <table><tr><th>條件</th><th>結果</th><th>依據</th></tr>${e.must_have_check.map(x => `<tr><td>${esc(x.requirement)}</td><td class="st-${x.status}" style="white-space:nowrap">${x.status}</td><td>${esc(x.evidence)}</td></tr>`).join('')}</table>
+      <h3>風險考量</h3>
+      ${e.risks.map(x => `<div class="risk sev-${x.severity}"><b>[${x.severity}] ${esc(x.risk)}</b><div>${esc(x.detail)}</div><div class="muted">驗證方式：${esc(x.how_to_verify)}</div></div>`).join('')}
+      <h3>需要補充了解的資訊</h3>
+      ${e.info_to_clarify.map((x, i) => `<div class="q">${i + 1}. ${esc(x.question)}<small>${esc(x.why)}</small></div>`).join('')}
+      <h3>溝通切入點</h3><p>${esc(e.pitch_angle)}</p>
+      <div class="src">來源：${esc(r.source)}${r.prefilter_score != null ? `｜關鍵字粗篩 ${r.prefilter_score} 分（命中：${esc(r.keyword_hits.join('、'))}）` : '｜掃描檔，由 AI 直接閱讀 PDF'}</div>
+    </div></div>`;
+}
+
+// ── 歷史紀錄 ──
+async function loadHistory() {
+  const list = await api('/api/runs');
+  $('#histList').innerHTML = list.length ? list.map(r =>
+    `<div class="hist" data-id="${esc(r.id)}"><span>${esc(r.title)}</span><span class="muted">${esc(r.created_at)}｜${r.count} 位${r.status === 'error' ? '｜失敗' : ''}</span></div>`).join('') : '尚無紀錄';
+  document.querySelectorAll('.hist').forEach(el => el.onclick = async () => {
+    showPage('new');
+    const d = await api('/api/runs/' + el.dataset.id);
+    $('#jd').value = d.jd; $('#extra').value = d.extra;
+    poll(d.id);
+  });
+}
+
+loadConfig();
+</script>
+</body>
+</html>

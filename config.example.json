@@ -1,0 +1,13 @@
+{
+  "resume_folders": [
+    "C:\\Users\\你的名字\\Documents\\履歷"
+  ],
+  "google_sheets": [
+    {"name": "人才庫總表", "url": "https://docs.google.com/spreadsheets/d/你的SheetID/edit#gid=0"}
+  ],
+  "google_service_account_file": "",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "shortlist_size": 20,
+  "max_workers": 4
+}
