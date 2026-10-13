@@ -74,6 +74,29 @@
   .q { padding: 8px 12px; background: var(--surface2); border-radius: 8px; margin: 6px 0; font-size: 14px; }
   .q small { display: block; color: var(--text-dim); }
   .src { font-size: 12px; color: var(--text-muted); word-break: break-all; margin-top: 12px; }
+  .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 120px); min-height: 420px; }
+  .chat-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  label.inline { display: flex; align-items: center; gap: 8px; margin: 0; white-space: nowrap; }
+  label.inline select { width: auto; max-width: 320px; padding: 6px 10px; }
+  label.check input { width: auto; }
+  .btn.small { padding: 6px 12px; font-size: 13px; }
+  .chat-log { flex: 1; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .msg { max-width: 85%; margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; line-height: 1.7; word-wrap: break-word; }
+  .msg.user { margin-left: auto; background: rgba(240,180,41,.15); border: 1px solid rgba(240,180,41,.3); white-space: pre-wrap; }
+  .msg.ai { background: var(--surface2); border: 1px solid var(--border); }
+  .msg.ai ul { padding-left: 20px; margin: 4px 0; }
+  .msg.err { border-color: var(--danger); color: var(--danger); }
+  .msg .refs { margin-top: 8px; font-size: 12px; color: var(--text-dim); }
+  .msg .refs summary { cursor: pointer; }
+  .typing::after { content: '▍'; animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .chat-input { display: flex; gap: 10px; margin-top: 12px; align-items: flex-end; }
+  .chat-input textarea { flex: 1; }
+  .chat-empty { color: var(--text-dim); text-align: center; padding: 30px 10px; }
+  .chat-empty .chips { justify-content: center; margin-top: 14px; }
+  .chat-empty .chip { cursor: pointer; padding: 6px 12px; font-size: 13px; }
+  .chat-empty .chip:hover { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 600px) { .msg { max-width: 95%; } .chat-wrap { height: calc(100vh - 150px); } }
   code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
   .hist { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; gap: 12px; }
   .hist:hover { color: var(--accent); }
@@ -84,7 +107,8 @@
 <header>
   <div class="logo">TALENT MATCH</div>
   <nav>
-    <button data-page="new" class="active">新篩選</button>
+    <button data-page="chat" class="active">AI 助理</button>
+    <button data-page="new">新篩選</button>
     <button data-page="history">歷史紀錄</button>
     <button data-page="library">人才庫</button>
     <button data-page="settings">設定</button>
@@ -92,7 +116,24 @@
 </header>
 <main>
   <!-- 新篩選 -->
-  <section id="page-new" class="page active">
+  <section id="page-chat" class="page active">
+    <div class="chat-wrap">
+      <div class="chat-bar">
+        <label class="inline">對話依據
+          <select id="chatRun"><option value="">不指定篩選結果</option></select>
+        </label>
+        <label class="inline check"><input type="checkbox" id="chatSearch" checked> 每次提問時搜尋整個人才庫</label>
+        <button class="btn ghost small" id="chatClear">清除對話</button>
+      </div>
+      <div id="chatLog" class="chat-log"></div>
+      <div class="chat-input">
+        <textarea id="chatText" rows="2" placeholder="輸入問題，Enter 送出（Shift+Enter 換行）"></textarea>
+        <button class="btn" id="chatSend">送出</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="page-new" class="page">
     <div id="keyWarn"></div>
     <div class="card">
       <h2>貼上職缺資訊</h2>
@@ -169,6 +210,7 @@ function showPage(p) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
   document.querySelectorAll('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
   if (p === 'history') loadHistory();
+  if (p === 'chat') loadChatRuns();
 }
 
 // ── 設定 ──
@@ -289,7 +331,7 @@ function renderRun(d) {
   if (s) {
     h += `<div class="card" style="border-color:var(--accent)"><div class="row" style="justify-content:space-between">
         <h2>推薦總結</h2>
-        <div class="row"><a class="btn ghost" href="/api/runs/${d.id}/export.csv">匯出 Excel (CSV)</a><a class="btn ghost" href="/api/runs/${d.id}/export.md">匯出報告 (Markdown)</a><a class="btn ghost" href="/api/runs/${d.id}/export-claude.md" title="下載前 10 名的履歷與 JD，可上傳到 claude.ai 請 Claude 再精評一次">匯出給 Claude 精評</a></div></div>
+        <div class="row"><a class="btn ghost" href="/api/runs/${d.id}/export.csv">匯出 Excel (CSV)</a><a class="btn ghost" href="/api/runs/${d.id}/export.md">匯出報告 (Markdown)</a><button class="btn ghost" onclick="discussRun('${d.id}')">用 AI 助理討論</button><a class="btn ghost" href="/api/runs/${d.id}/export-claude.md" title="下載前 10 名的履歷與 JD，可上傳到 claude.ai 請 Claude 再精評一次">匯出給 Claude 精評</a></div></div>
       <p>${esc(s.overview)}</p>
       <h3>優先聯絡</h3><ol class="list">${s.top_picks.map(p => `<li><b>${esc(p.candidate_name)}</b>：${esc(p.why_this_rank)}</li>`).join('')}</ol>
       ${s.comparison_notes.length ? `<h3>比較與取捨</h3><ul class="list">${s.comparison_notes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
@@ -346,6 +388,112 @@ async function loadHistory() {
     poll(d.id);
   });
 }
+
+// ── AI 助理 ──
+const SUGGEST_RUN = ['比較前三名的優缺點，我該先聯絡誰？', '幫我寫一則給第一名的 LinkedIn 邀約訊息', '第一名的風險要怎麼在電話中確認？', '這個職缺還可以去哪些公司找人？'];
+const SUGGEST_FREE = ['人才庫裡有誰做過半導體製程、英文好？', '找 5 年以上經驗的後端工程師，列出姓名和現職', '幫我把這段 JD 改寫得更吸引人：', '面試資深業務經理要問哪些問題？'];
+let chatHistory = [], chatAbort = null;
+const chatKey = () => 'hh_chat_' + ($('#chatRun').value || 'free');
+function loadChat() {
+  try { chatHistory = JSON.parse(localStorage.getItem(chatKey()) || '[]'); } catch { chatHistory = []; }
+  renderChat();
+}
+function saveChat() { try { localStorage.setItem(chatKey(), JSON.stringify(chatHistory.slice(-40))); } catch {} }
+
+function md(text) {
+  const lines = esc(text).split('\n');
+  let html = '', inList = false;
+  for (let l of lines) {
+    l = l.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+    const li = l.match(/^\s*[-*•]\s+(.*)/);
+    if (li) { if (!inList) { html += '<ul>'; inList = true; } html += `<li>${li[1]}</li>`; continue; }
+    if (inList) { html += '</ul>'; inList = false; }
+    const h = l.match(/^#{1,4}\s+(.*)/);
+    html += h ? `<b>${h[1]}</b><br>` : l + '<br>';
+  }
+  return html + (inList ? '</ul>' : '');
+}
+function msgHtml(m) {
+  if (m.role === 'user') return `<div class="msg user">${esc(m.content)}</div>`;
+  const refs = m.sources && m.sources.length ? `<details class="refs"><summary>參考了人才庫中 ${m.sources.length} 位人選</summary>${m.sources.map(x => esc(x.name) + '｜' + esc(x.source)).join('<br>')}</details>` : '';
+  return `<div class="msg ai ${m.error ? 'err' : ''} ${m.pending ? 'typing' : ''}">${md(m.content)}${refs}</div>`;
+}
+function renderChat() {
+  const log = $('#chatLog');
+  if (!chatHistory.length) {
+    const sug = $('#chatRun').value ? SUGGEST_RUN : SUGGEST_FREE;
+    log.innerHTML = `<div class="chat-empty">${$('#chatRun').value ? '可以針對這次篩選結果發問，或請我幫你寫訊息、規劃面試。' : '可以請我在人才庫找人、比較人選、寫邀約訊息、分析 JD…'}<div class="chips">${sug.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div></div>`;
+    log.querySelectorAll('.chip').forEach(c => c.onclick = () => { $('#chatText').value = c.textContent; $('#chatText').focus(); });
+    return;
+  }
+  log.innerHTML = chatHistory.map(msgHtml).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+async function sendChat() {
+  if (chatAbort) { chatAbort.abort(); return; }  // 再按一次 = 停止
+  const text = $('#chatText').value.trim();
+  if (!text) return;
+  $('#chatText').value = '';
+  const history = chatHistory.filter(m => !m.error).map(m => ({role: m.role, content: m.content}));
+  chatHistory.push({role: 'user', content: text});
+  const reply = {role: 'assistant', content: '', pending: true, sources: []};
+  chatHistory.push(reply);
+  renderChat();
+  chatAbort = new AbortController();
+  $('#chatSend').textContent = '停止';
+  try {
+    const r = await fetch('/api/chat', {method: 'POST', headers: {'Content-Type': 'application/json'}, signal: chatAbort.signal,
+      body: JSON.stringify({message: text, history, run_id: $('#chatRun').value, search: $('#chatSearch').checked})});
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, {stream: true});
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        if (!line.trim()) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === 'sources') reply.sources = ev.items;
+        else if (ev.type === 'text') reply.content += ev.text;
+        else if (ev.type === 'error') { reply.content += (reply.content ? '\n\n' : '') + '發生錯誤：' + ev.error; reply.error = true; }
+        renderChat();
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') reply.content += '\n\n（已停止）';
+    else { reply.content = '發生錯誤：' + e.message; reply.error = true; }
+  }
+  if (!reply.content) { reply.content = '（沒有回覆）'; reply.error = true; }
+  reply.pending = false;
+  chatAbort = null;
+  $('#chatSend').textContent = '送出';
+  renderChat();
+  saveChat();
+}
+$('#chatSend').onclick = sendChat;
+$('#chatText').addEventListener('keydown', e => {
+  // 中文輸入法選字時按 Enter 不送出
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); sendChat(); }
+});
+$('#chatClear').onclick = () => { chatHistory = []; saveChat(); renderChat(); };
+$('#chatRun').onchange = loadChat;
+
+let pendingRun = null;
+async function loadChatRuns() {
+  const list = await api('/api/runs');
+  const cur = pendingRun ?? $('#chatRun').value;
+  pendingRun = null;
+  $('#chatRun').innerHTML = '<option value="">不指定篩選結果</option>' +
+    list.filter(r => r.status === 'done').map(r => `<option value="${esc(r.id)}">${esc(r.title)}（${esc(r.created_at)}）</option>`).join('');
+  $('#chatRun').value = list.some(r => r.id === cur) ? cur : '';
+  loadChat();
+}
+function discussRun(id) { pendingRun = id; showPage('chat'); }
+loadChatRuns();
 
 loadConfig();
 </script>

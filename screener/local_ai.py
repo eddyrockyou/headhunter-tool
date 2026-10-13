@@ -65,6 +65,34 @@ class Ollama:
         except json.JSONDecodeError as e:
             raise LocalAIError("本機 AI 回傳的格式不完整，請重試或換用較大的模型") from e
 
+    def chat_stream(self, model: str, messages: list[dict], num_ctx: int = 16384):
+        """逐段產生回覆文字（聊天用，讓文字邊想邊出現）。"""
+        body = {"model": model, "messages": messages, "stream": True, "think": False,
+                "options": {"temperature": 0.4, "num_ctx": num_ctx}}
+        try:
+            r = requests.post(f"{self.url}/api/chat", json=body, stream=True, timeout=1800)
+            if r.status_code == 400 and "think" in r.text:
+                body.pop("think")  # 不支援思考模式的模型
+                r = requests.post(f"{self.url}/api/chat", json=body, stream=True, timeout=1800)
+        except requests.ConnectionError as e:
+            raise LocalAIError("連不到 Ollama，請確認 Ollama 已開啟（工作列右下角有羊駝圖示）") from e
+        with r:
+            if r.status_code == 404:
+                raise LocalAIError(f"找不到模型「{model}」，請先在命令提示字元執行：ollama pull {model}")
+            if r.status_code >= 400:
+                raise LocalAIError(f"Ollama 錯誤：{r.text}")
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                chunk = json.loads(line)
+                if chunk.get("error"):
+                    raise LocalAIError(f"Ollama 錯誤：{chunk['error']}")
+                text = chunk.get("message", {}).get("content", "")
+                if text:
+                    yield text
+                if chunk.get("done"):
+                    break
+
     def embed(self, model: str, texts: list[str]) -> list[list[float]]:
         data = self._post("/api/embed", {"model": model, "input": texts}, timeout=600)
         return data["embeddings"]

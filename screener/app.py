@@ -1,6 +1,7 @@
 """本機網頁介面。執行：python -m screener.app ，瀏覽器開 http://127.0.0.1:5000"""
 import csv
 import io
+import json
 import os
 import re
 import threading
@@ -8,6 +9,7 @@ import webbrowser
 
 from flask import Flask, Response, abort, jsonify, render_template, request
 
+from .chat import build_prompt, stream_reply
 from .config import load_config, save_config
 from .library import load_library
 from .local_ai import Ollama
@@ -168,6 +170,32 @@ def export_md(run_id):
         ]
     return Response("\n".join(lines), mimetype="text/markdown",
                     headers={"Content-Disposition": f"attachment; filename=screening-{run_id}.md"})
+
+
+@app.post("/api/chat")
+def chat():
+    """串流回覆：每行一個 JSON（sources → text… → done / error）。"""
+    data = request.get_json()
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"error": "請輸入問題"}), 400
+    run_id = data.get("run_id") or ""
+    run = _get_run(run_id) if run_id else None
+    cfg = load_config()
+
+    def generate():
+        try:
+            prompt, found = build_prompt(cfg, message, run, bool(data.get("search", True)))
+            yield json.dumps({"type": "sources", "items": [
+                {"name": c["name"], "source": c["source"]} for c in found]}, ensure_ascii=False) + "\n"
+            for text in stream_reply(cfg, data.get("history") or [], prompt):
+                yield json.dumps({"type": "text", "text": text}, ensure_ascii=False) + "\n"
+            yield json.dumps({"type": "done"}) + "\n"
+        except Exception as e:
+            yield json.dumps({"type": "error", "error": str(e)}, ensure_ascii=False) + "\n"
+
+    return Response(generate(), mimetype="application/x-ndjson",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 def main():
