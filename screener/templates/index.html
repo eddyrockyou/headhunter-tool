@@ -74,6 +74,7 @@
   .q { padding: 8px 12px; background: var(--surface2); border-radius: 8px; margin: 6px 0; font-size: 14px; }
   .q small { display: block; color: var(--text-dim); }
   .src { font-size: 12px; color: var(--text-muted); word-break: break-all; margin-top: 12px; }
+  code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
   .hist { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; gap: 12px; }
   .hist:hover { color: var(--accent); }
   @media (max-width: 600px) { .dim { grid-template-columns: 90px 1fr 32px; } .cand-head { gap: 10px; } }
@@ -129,12 +130,24 @@
     </div>
     <div class="card">
       <h2>AI 評估</h2>
-      <div class="grid2">
-        <div><label>模型</label><input id="cfgModel"></div>
+      <label>AI 引擎</label>
+      <select id="cfgEngine">
+        <option value="ollama">本機免費 AI（Ollama）— 不用金鑰、履歷不離開電腦</option>
+        <option value="anthropic">Claude API — 付費、品質最好</option>
+      </select>
+      <div id="localFields" class="grid2">
+        <div><label>本機評估模型</label><input id="cfgLocalModel" placeholder="qwen3:8b"></div>
+        <div><label>語意比對模型（留空 = 只用關鍵字）</label><input id="cfgEmbed" placeholder="bge-m3"></div>
+      </div>
+      <p id="localHint" class="muted">電腦記憶體 8GB 用 qwen3:4b；16GB 用 qwen3:8b（預設）；32GB 以上或有獨立顯卡可用 qwen3:14b。換模型前要先在命令提示字元執行 <code>ollama pull 模型名稱</code>。</p>
+      <div id="claudeFields" class="grid2">
+        <div><label>Claude 模型</label><input id="cfgModel"></div>
         <div><label>評估深度</label>
           <select id="cfgEffort"><option value="medium">medium（較快、較省）</option><option value="high">high（建議）</option><option value="xhigh">xhigh（更仔細）</option><option value="max">max（最仔細、最慢）</option></select></div>
+      </div>
+      <div class="grid2">
         <div><label>每次深度評估人數上限</label><input id="cfgShort" type="number" min="1" max="200"></div>
-        <div><label>同時評估人數</label><input id="cfgWorkers" type="number" min="1" max="16"></div>
+        <div><label>同時評估人數（本機 AI 建議 1–2）</label><input id="cfgWorkers" type="number" min="1" max="16"></div>
       </div>
     </div>
     <button class="btn" id="saveCfg">儲存設定</button> <span id="cfgMsg" class="muted"></span>
@@ -164,15 +177,35 @@ async function loadConfig() {
   $('#cfgFolders').value = c.resume_folders.join('\n');
   $('#cfgSheets').value = c.google_sheets.map(s => `${s.name} | ${s.url}`).join('\n');
   $('#cfgSA').value = c.google_service_account_file;
+  $('#cfgEngine').value = c.engine;
+  $('#cfgLocalModel').value = c.local_model;
+  $('#cfgEmbed').value = c.embedding_model;
+  toggleEngine();
   $('#cfgModel').value = c.model;
   $('#cfgEffort').value = c.effort;
   $('#cfgShort').value = c.shortlist_size;
   $('#cfgWorkers').value = c.max_workers;
-  $('#keyWarn').innerHTML = c.api_key_set ? '' :
-    '<div class="notice err">尚未設定 ANTHROPIC_API_KEY 環境變數，AI 評估將無法執行。請參考 README 設定後重新啟動。</div>';
+  let warn = '';
+  if (c.engine === 'anthropic' && !c.api_key_set) {
+    warn = '尚未設定 ANTHROPIC_API_KEY 環境變數，Claude API 無法使用。可到「設定」改用本機免費 AI，或參考 README 設定金鑰後重新啟動。';
+  } else if (c.engine === 'ollama' && !c.ollama.running) {
+    warn = '本機 AI（Ollama）沒有在執行。請從開始選單開啟 Ollama，再重新整理此頁面。還沒安裝的話請參考 README 的安裝步驟。';
+  } else if (c.engine === 'ollama') {
+    const has = m => c.ollama.models.some(x => x === m || x === m + ':latest');
+    const missing = [c.local_model, c.embedding_model].filter(m => m && !has(m));
+    if (missing.length) warn = '本機 AI 還缺模型，請在命令提示字元執行：' + missing.map(m => '<code>ollama pull ' + esc(m) + '</code>').join('、');
+  }
+  $('#keyWarn').innerHTML = warn ? `<div class="notice err">${warn}</div>` : '';
   const n = c.resume_folders.length + c.google_sheets.length;
   $('#libInfo').textContent = n ? `資料來源：${c.resume_folders.length} 個資料夾、${c.google_sheets.length} 個 Google Sheet` : '尚未設定資料來源，請先到「設定」';
 }
+function toggleEngine() {
+  const local = $('#cfgEngine').value === 'ollama';
+  $('#localFields').style.display = local ? '' : 'none';
+  $('#localHint').style.display = local ? '' : 'none';
+  $('#claudeFields').style.display = local ? 'none' : '';
+}
+$('#cfgEngine').onchange = toggleEngine;
 $('#saveCfg').onclick = async () => {
   const sheets = $('#cfgSheets').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
     const i = l.lastIndexOf('|');
@@ -182,10 +215,13 @@ $('#saveCfg').onclick = async () => {
     resume_folders: $('#cfgFolders').value.split('\n').map(s => s.trim()).filter(Boolean),
     google_sheets: sheets,
     google_service_account_file: $('#cfgSA').value.trim(),
+    engine: $('#cfgEngine').value,
+    local_model: $('#cfgLocalModel').value.trim() || 'qwen3:8b',
+    embedding_model: $('#cfgEmbed').value.trim(),
     model: $('#cfgModel').value.trim() || 'claude-opus-5-5',
     effort: $('#cfgEffort').value,
     shortlist_size: +$('#cfgShort').value || 20,
-    max_workers: +$('#cfgWorkers').value || 4,
+    max_workers: +$('#cfgWorkers').value || 2,
   })});
   $('#cfgMsg').textContent = '已儲存';
   setTimeout(() => $('#cfgMsg').textContent = '', 2000);
@@ -201,7 +237,7 @@ $('#scanBtn').onclick = async () => {
     $('#libView').innerHTML = `<p>共 <b>${d.count}</b> 位人選</p>` +
       (d.warnings.length ? `<div class="notice">${d.warnings.map(esc).join('<br>')}</div>` : '') +
       `<table><tr><th>姓名</th><th>來源</th><th>字數</th></tr>${d.candidates.map(c =>
-        `<tr><td>${esc(c.name)}</td><td class="muted">${esc(c.source)}</td><td>${c.scanned ? '掃描檔（AI 直接讀 PDF）' : c.chars}</td></tr>`).join('')}</table>`;
+        `<tr><td>${esc(c.name)}</td><td class="muted">${esc(c.source)}</td><td>${c.scanned ? '掃描檔（圖片型 PDF）' : c.chars}</td></tr>`).join('')}</table>`;
   } catch (e) { $('#libView').innerHTML = `<div class="notice err">${esc(e.message)}</div>`; }
   $('#scanBtn').disabled = false;
 };
@@ -233,7 +269,7 @@ function renderRun(d) {
   if (d.status === 'running') {
     h += `<div class="card"><b>${esc(d.stage)}</b> ${total ? `（${done}/${total}）` : ''}
       <div class="progress"><div style="width:${total ? done / total * 100 : 5}%"></div></div>
-      <p class="muted" style="margin-top:8px">人才庫 ${d.library_size || '–'} 人；評估完成的人選會陸續顯示在下方。</p></div>`;
+      <p class="muted" style="margin-top:8px">人才庫 ${d.library_size || '–'} 人；評估完成的人選會陸續顯示在下方。可以先去做別的事，不要關掉這個視窗。</p></div>`;
   }
   if (d.error) h += `<div class="notice err">發生錯誤：${esc(d.error)}</div>`;
   if (d.warnings.length) h += `<details class="notice"><summary>有 ${d.warnings.length} 個檔案／來源無法讀取</summary>${d.warnings.map(esc).join('<br>')}</details>`;
@@ -253,7 +289,7 @@ function renderRun(d) {
   if (s) {
     h += `<div class="card" style="border-color:var(--accent)"><div class="row" style="justify-content:space-between">
         <h2>推薦總結</h2>
-        <div class="row"><a class="btn ghost" href="/api/runs/${d.id}/export.csv">匯出 Excel (CSV)</a><a class="btn ghost" href="/api/runs/${d.id}/export.md">匯出報告 (Markdown)</a></div></div>
+        <div class="row"><a class="btn ghost" href="/api/runs/${d.id}/export.csv">匯出 Excel (CSV)</a><a class="btn ghost" href="/api/runs/${d.id}/export.md">匯出報告 (Markdown)</a><a class="btn ghost" href="/api/runs/${d.id}/export-claude.md" title="下載前 10 名的履歷與 JD，可上傳到 claude.ai 請 Claude 再精評一次">匯出給 Claude 精評</a></div></div>
       <p>${esc(s.overview)}</p>
       <h3>優先聯絡</h3><ol class="list">${s.top_picks.map(p => `<li><b>${esc(p.candidate_name)}</b>：${esc(p.why_this_rank)}</li>`).join('')}</ol>
       ${s.comparison_notes.length ? `<h3>比較與取捨</h3><ul class="list">${s.comparison_notes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
@@ -293,6 +329,7 @@ function candCard(r, rank) {
       <h3>需要補充了解的資訊</h3>
       ${e.info_to_clarify.map((x, i) => `<div class="q">${i + 1}. ${esc(x.question)}<small>${esc(x.why)}</small></div>`).join('')}
       <h3>溝通切入點</h3><p>${esc(e.pitch_angle)}</p>
+      ${e.truncated ? '<div class="notice">履歷很長，本機 AI 只讀了前 2 萬字，後段經歷可能未納入評估。</div>' : ''}
       <div class="src">來源：${esc(r.source)}${r.prefilter_score != null ? `｜關鍵字粗篩 ${r.prefilter_score} 分（命中：${esc(r.keyword_hits.join('、'))}）` : '｜掃描檔，由 AI 直接閱讀 PDF'}</div>
     </div></div>`;
 }

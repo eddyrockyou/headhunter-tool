@@ -3,11 +3,18 @@
     "C:\\Users\\你的名字\\Documents\\履歷"
   ],
   "google_sheets": [
-    {"name": "人才庫總表", "url": "https://docs.google.com/spreadsheets/d/你的SheetID/edit#gid=0"}
+    {
+      "name": "人才庫總表",
+      "url": "https://docs.google.com/spreadsheets/d/你的SheetID/edit#gid=0"
+    }
   ],
   "google_service_account_file": "",
+  "engine": "ollama",
+  "ollama_url": "http://127.0.0.1:11434",
+  "local_model": "qwen3:8b",
+  "embedding_model": "bge-m3",
   "model": "claude-opus-5-5",
   "effort": "high",
   "shortlist_size": 20,
-  "max_workers": 4
+  "max_workers": 2
 }

@@ -5,6 +5,8 @@ from pathlib import Path
 
 import anthropic
 
+from .local_ai import LocalAIError, Ollama
+
 FIT_LEVELS = ["強烈推薦", "推薦", "可考慮", "不推薦"]
 
 _STR = {"type": "string"}
@@ -99,13 +101,36 @@ SCORING_GUIDE = """評分標準（0–100 分）：
 維度分數同樣為 0–100。分數要拉開差距，不要大家都給 70 幾分。"""
 
 
+# 本機模型的上下文較小，超過這個字數的履歷只讀前面（結果中會註明）
+LOCAL_MAX_RESUME_CHARS = 20000
+
+
+def fit_level_for(score: int) -> str:
+    if score >= 90:
+        return "強烈推薦"
+    if score >= 75:
+        return "推薦"
+    if score >= 55:
+        return "可考慮"
+    return "不推薦"
+
+
 class Evaluator:
-    def __init__(self, model: str = "claude-opus-5-5", effort: str = "high"):
-        self.client = anthropic.Anthropic()
-        self.model = model
-        self.effort = effort
+    """engine = "ollama"：本機免費模型；engine = "anthropic"：Claude API（付費）。"""
+
+    def __init__(self, cfg: dict):
+        self.engine = cfg.get("engine", "ollama")
+        self.effort = cfg.get("effort", "high")
+        if self.engine == "ollama":
+            self.ollama = Ollama(cfg.get("ollama_url") or "http://127.0.0.1:11434")
+            self.model = cfg.get("local_model") or "qwen3:8b"
+        else:
+            self.client = anthropic.Anthropic()
+            self.model = cfg.get("model") or "claude-opus-5-5"
 
     def _call(self, system, content, schema: dict, effort: str, max_tokens: int = 32000) -> dict:
+        if self.engine == "ollama":
+            return self._call_local(system, content, schema)
         kwargs = {}
         # 遇到安全分類器誤判時由伺服器自動改用備援模型重跑（Haiku 不支援）
         if "haiku" not in self.model:
@@ -125,6 +150,15 @@ class Evaluator:
             raise RuntimeError("回應過長被截斷，請降低評估深度後重試")
         text = next((b.text for b in msg.content if b.type == "text"), "")
         return json.loads(text)
+
+    def _call_local(self, system, content, schema: dict) -> dict:
+        if isinstance(system, list):
+            system = "\n\n".join(b["text"] for b in system)
+        if isinstance(content, list):
+            if any(b["type"] == "document" for b in content):
+                raise LocalAIError("這是掃描檔（圖片型 PDF），本機 AI 無法閱讀；請另存為文字型 PDF 或 Word")
+            content = "\n\n".join(b["text"] for b in content)
+        return self.ollama.chat_json(self.model, system, content, schema)
 
     def analyze_jd(self, jd: str, extra: str) -> dict:
         prompt = f"""請分析以下職缺，整理出篩選人選要用的條件。
@@ -184,6 +218,10 @@ class Evaluator:
 
 人選資料來源：{candidate['source']}"""
 
+        text = candidate["text"]
+        truncated = self.engine == "ollama" and len(text) > LOCAL_MAX_RESUME_CHARS
+        if truncated:
+            text = text[:LOCAL_MAX_RESUME_CHARS]
         content = []
         if candidate.get("pdf_path"):
             data = base64.standard_b64encode(Path(candidate["pdf_path"]).read_bytes()).decode()
@@ -195,11 +233,31 @@ class Evaluator:
         else:
             content.append({
                 "type": "text",
-                "text": f"<resume>\n{candidate['text']}\n</resume>\n\n{instructions}",
+                "text": f"<resume>\n{text}\n</resume>\n\n{instructions}",
             })
         result = self._call(system, content, CANDIDATE_SCHEMA, effort=self.effort)
-        result["score"] = max(0, min(100, int(result["score"])))
+        score = max(0, min(100, int(result["score"])))
+        if self.engine == "ollama":
+            score = self._weighted_score(analysis, result, score)
+        result["score"] = score
+        # 合適度一律依分數區間決定，避免分數與等級不一致
+        result["fit_level"] = fit_level_for(score)
+        result["truncated"] = truncated
         return result
+
+    @staticmethod
+    def _weighted_score(analysis: dict, result: dict, fallback: int) -> int:
+        """本機模型的總分常與各維度不一致，改用 JD 分析的權重重新計算。"""
+        weights = {d["name"]: d["weight"] for d in analysis.get("scoring_dimensions", [])}
+        pairs = [(weights[d["dimension"]], d["score"]) for d in result["dimension_scores"]
+                 if d["dimension"] in weights and weights[d["dimension"]] > 0]
+        score = fallback
+        if pairs:
+            score = round(sum(w * max(0, min(100, s)) for w, s in pairs) / sum(w for w, _ in pairs))
+        # 有必要條件明確不符合時，最高只到「可考慮」
+        if any(c["status"] == "不符合" for c in result["must_have_check"]):
+            score = min(score, 70)
+        return score
 
     def summarize(self, analysis: dict, results: list[dict]) -> dict:
         brief = [

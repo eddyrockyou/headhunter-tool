@@ -7,7 +7,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from .config import CACHE_DIR
 from .evaluator import Evaluator
 from .library import load_library
+from .local_ai import Ollama
 from .prefilter import rank
+from .semantic import similarities
 
 RUNS_DIR = CACHE_DIR / "runs"
 
@@ -27,6 +29,7 @@ class Run:
         self.results: list[dict] = []
         self.failed: list[dict] = []
         self.summary: dict | None = None
+        self.texts: dict[str, str] = {}  # 入選者的履歷全文，供「匯出給 Claude」使用
         self.error = ""
         self.created_at = time.strftime("%Y-%m-%d %H:%M")
 
@@ -51,7 +54,8 @@ class Run:
     def save(self) -> None:
         RUNS_DIR.mkdir(parents=True, exist_ok=True)
         (RUNS_DIR / f"{self.id}.json").write_text(
-            json.dumps(self.to_dict(), ensure_ascii=False, indent=1), encoding="utf-8"
+            json.dumps({**self.to_dict(), "texts": self.texts}, ensure_ascii=False, indent=1),
+            encoding="utf-8",
         )
 
     def execute(self) -> None:
@@ -67,21 +71,44 @@ class Run:
 
     def _execute(self) -> None:
         cfg = self.cfg
-        ev = Evaluator(model=cfg["model"], effort=cfg["effort"])
+        ev = Evaluator(cfg)
+        local = cfg.get("engine", "ollama") == "ollama"
+        ollama = Ollama(cfg.get("ollama_url") or "http://127.0.0.1:11434")
+        if local and not ollama.status()["running"]:
+            raise RuntimeError("Ollama 沒有在執行。請先開啟 Ollama（開始選單搜尋 Ollama），再重新按「開始推薦人選」")
 
         self.stage = "讀取人才庫（本機資料夾、Google Sheet）"
-        library, warnings = load_library(cfg)
+        library, warnings = load_library(cfg, progress=self._progress("解析履歷檔案"))
         self.warnings.extend(warnings)
+        if local:
+            scanned = [c for c in library if c.get("pdf_path")]
+            if scanned:
+                self.warnings.append(f"{len(scanned)} 份掃描檔（圖片型 PDF）本機 AI 無法閱讀，已略過："
+                                     + "、".join(c["name"] for c in scanned[:20])
+                                     + ("…" if len(scanned) > 20 else ""))
+                library = [c for c in library if not c.get("pdf_path")]
         self.library_size = len(library)
         if not library:
             raise RuntimeError("人才庫是空的，請先在「設定」加入履歷資料夾或 Google Sheet")
+        self.progress = [0, 0]
 
         self.stage = "AI 分析職缺需求"
         self.analysis = ev.analyze_jd(self.jd, self.extra)
+        query = self.jd + "\n" + self.extra
 
-        self.stage = "關鍵字粗篩"
-        shortlist = rank(library, self.jd + "\n" + self.extra, self.analysis["keywords"],
-                         int(cfg["shortlist_size"]))
+        semantic = None
+        if cfg.get("embedding_model"):
+            self.stage = "語意比對整個人才庫"
+            try:
+                semantic = similarities(ollama, cfg["embedding_model"], query, library,
+                                        progress=self._progress("建立語意索引（每份履歷只需算一次）"))
+            except Exception as e:
+                self.warnings.append(f"語意比對未啟用，只用關鍵字粗篩：{e}")
+            self.progress = [0, 0]
+
+        self.stage = "粗篩排序"
+        shortlist = rank(library, query, self.analysis["keywords"],
+                         int(cfg["shortlist_size"]), semantic)
         self.progress = [0, len(shortlist)]
 
         self.stage = f"AI 深度評估 {len(shortlist)} 位人選"
@@ -92,6 +119,7 @@ class Run:
             }
             for fut in as_completed(futures):
                 c = futures[fut]
+                self.texts[c["id"]] = c["text"]
                 try:
                     self.results.append({
                         "id": c["id"],
@@ -109,6 +137,13 @@ class Run:
         if self.results:
             self.stage = "產出推薦總結"
             self.summary = ev.summarize(self.analysis, self.to_dict()["results"])
+
+
+    def _progress(self, label: str):
+        def update(done: int, total: int) -> None:
+            self.stage = label
+            self.progress = [done, total]
+        return update
 
 
 def list_runs() -> list[dict]:
